@@ -1,0 +1,151 @@
+//
+//  folderButton.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 5/5/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "album.h"
+#import "folderButton.h"
+#import "iLivinMusicMainViewController.h"
+
+@implementation folderButton
+@synthesize mainViewCon;
+@synthesize recordStroke;
+@synthesize albumJacket;
+@synthesize folderType;
+@synthesize artist;
+@synthesize albumTitle;
+@synthesize index;
+@synthesize folderAddMode;
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        // Initialization code
+        folderImage = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, AlbumStrokeLength, AlbumStrokeLength)];
+        
+        albumJacket = [[UIImageView alloc] initWithFrame:CGRectMake((AlbumStrokeLength-AlbumLength)/2, (AlbumStrokeLength-AlbumLength)/2, AlbumLength, AlbumLength)];
+        albumJacketLayer = [albumJacket layer];
+        [albumJacketLayer setMasksToBounds:YES];
+        [albumJacketLayer setCornerRadius:AlbumLength / 2.0];
+        [folderImage addSubview:albumJacket];
+        [albumJacket release];
+        
+        coverImage = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, AlbumStrokeLength, AlbumStrokeLength)];
+        [folderImage addSubview:coverImage];
+
+        [self addSubview:folderImage];
+        
+        initialFrame = frame;
+        folderAddMode = NO;
+    }
+    return self;
+}
+
+- (void)setFrameWithInitialFrame:(CGRect)frame
+{
+    self.frame = frame;
+    initialFrame = frame;
+}
+
+- (void)dealloc
+{
+    [folderImage release];
+    [albumJacket release];
+    [coverImage release];
+    [super dealloc];
+}
+
+- (void)setCoverHidden
+{ 
+    [coverImage setHidden:YES];
+}
+
+- (void)setCover:(BOOL)selected
+{
+    [coverImage setHidden:NO];
+    if (selected) {
+        [coverImage setImage:[UIImage imageNamed:@"pop_yellow_album_storage_albumborder_selected.png"]];
+    } else {
+        [coverImage setImage:[UIImage imageNamed:@"pop_yellow_album_storage_albumborder.png"]];
+    }
+}
+
+#pragma mark - touch events
+- (void)longPressAction
+{
+    folderClicked = NO;
+    [mainViewCon collectSelectedAlbumToMovingAlbum:self.frame mainAlbum:self];
+}
+
+- (void)EnlargeOnRecord
+{
+    //album become larger
+    [UIView beginAnimations:nil context:nil];
+    [UIView setAnimationDuration:0.2];    
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(finishEnlargeOnRecord)];
+    self.frame = CGRectMake((320 - self.frame.size.height) / 2, recordMargin + (recordLength - self.frame.size.height) / 2 , self.frame.size.width, self.frame.size.height);
+    [UIView commitAnimations];
+}
+
+- (void)finishEnlargeOnRecord
+{
+    //back to album storage
+    [mainViewCon selectedAlbumBackToInitialPos:self.frame];
+    
+    //self move back to own position
+    self.frame = initialFrame;    
+    
+//    if([mainViewCon respondsToSelector:@selector(albumFinishEnlargeOnRecord:Title:playTime:album:)])
+//        [mainViewCon albumFinishEnlargeOnRecord:recordStroke Title:albumTitle playTime:playTime album:self];
+}
+
+#pragma mark - touch events
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count];
+	if (count == 1) {
+		touch = [[allTouches objectAtIndex:0] locationInView:[self superview]]; 
+        moved = NO;
+//        [self setSelect:!selected];
+//        [self performSelector:@selector(longPressAction) withObject:nil afterDelay:FolderLongPressEventTime];
+	}
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+	if (count == 1) {
+        currentTouch = [[allTouches objectAtIndex:0] locationInView:[self superview]];          
+        [mainViewCon folderVerticalMove:currentTouch.y folderY:self.frame.origin.y];
+        touch = currentTouch;
+        moved = YES;
+	}
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //    NSLog(@"touchesEnded");
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+    if(count == 1)
+    {
+        if(moved == NO)
+        {
+            if(!folderAddMode)
+                [mainViewCon folderButtonOnAction:self];
+            else
+                [mainViewCon saveAlbumsInFolder:self];
+        }
+        else 
+        {
+            [mainViewCon folderVerticalEnded];
+        }
+    }
+}
+@end

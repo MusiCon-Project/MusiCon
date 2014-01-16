@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/Network/HTTP
+END
+HTTPManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/Network/HTTP/HTTPManager.h
+END
+iLMHTTPManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/Network/HTTP/iLMHTTPManager.h
+END
+HTTPManager.m
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/Network/HTTP/HTTPManager.m
+END
+iLMHTTPManager.m
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/Network/HTTP/iLMHTTPManager.m
+END

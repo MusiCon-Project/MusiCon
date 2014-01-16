@@ -1,0 +1,111 @@
+//
+//  iLivinMusicMainViewController.h
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 2/11/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVAudioSession.h>
+#import <MediaPlayer/MediaPlayer.h>
+#import "AudioHelper.h"
+#import "album.h"
+#import "folderButton.h"
+#import "record.h"
+#import "recordLine.h"
+#import "musicHistoryTableView.h"
+#import "selfMusicHistoryCell.h"
+#import "utilButton.h"
+
+#define albumOriginX 320
+#define recordMargin 5
+#define recordLength 250
+
+#define timeButtonMargin 20
+#define HistoryHeaderHeight 10
+#define HistoryHeaderLineLength 100
+
+//Modified by The Finest Artist at 5.20
+#define albumStorageAnimationDuration 0.1
+#define albumStorageOpenEventMargin 30
+#define albumStorageCloseEventMargin 200
+#define albumStorageAlbumSpace 60
+#define albumStorageWidth 70
+#define albumStorageNameTagWidth 150
+#define albumStorageOneClickOpenEventMargin 25
+#define albumStorageOneClickCloseEventMargin 85
+#define albumStorageTouchSensitivity 1
+#define albumVerticalAnimationDuration 0.1
+
+@interface iLivinMusicMainViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UIGestureRecognizerDelegate, AudioHelperDelegate, albumDelegate, recordLineDelegate>
+{
+    UIImageView * bg;
+    
+    UIButton * slideButton;
+    BOOL opened;
+    BOOL shouldMove;
+    BOOL shouldOneClickMove;
+    double lastTouchX;
+    double lastTouchY;
+    BOOL shouldScroll;
+    
+    BOOL albumVerticalMoveStarted;
+    double albumVerticalMoveStartY;
+    
+    UIView * fullRecordView;
+    UIImageView * volumeView;
+    
+    MPMusicPlayerController * musicPlayer;
+    
+    utilButton * timerButton;
+    utilButton * alarmButton;
+    
+    AudioHelper * audioHelper;
+    NSMutableArray * albumArray;
+    NSMutableArray * selectedAlbumArray;
+    NSMutableArray * folderArray;
+    
+    record * _record;
+    NSMutableArray * historyArray;
+    musicHistoryTableView * _musicHistoryTableView;
+    
+    UIScrollView * albumScroll;
+    
+    CGPoint touch;
+    CGPoint currentTouch;
+    album * selectedAlbum;
+    
+    UIButton * shopButton;
+    UIButton * infoTrashButton;
+    UIButton * recentMusicButton;
+    UIButton * menuButton;
+    
+    NSInteger preSelectedmenu; //0:song 1:artist 2:album 3:folder
+    
+    BOOL longLeftSwipeDetected;
+    UISwipeGestureRecognizer *longLeftSwipeRecognizer;
+    
+    NSMutableArray * subMenus;
+    NSMutableArray * albumsInFolderArr;
+    BOOL folderAddActivated;
+}
+<<<<<<< .mine
+@property(nonatomic, retain) record * record;
+@property(readwrite) BOOL shouldReveal;
+=======
+@property(readwrite) BOOL opened;
+>>>>>>> .r41
+@property(readwrite) BOOL shouldMove;
+@property(nonatomic, retain) NSMutableArray * albumArray;
+@property(nonatomic, retain) NSMutableArray * folderArray;
+@property(nonatomic, retain) UIButton * slideButton;
+- (void)addAlbumInSelectedAlbumArr:(album *)_album;
+- (void)removeAlbumFromSelectedAlbumArr:(album *)_album;
+- (void)FilpToAlbumAddOnFolderAction:(album *)selAlbum;
+- (void)collectSelectedAlbumToMovingAlbum:(CGRect)pos mainAlbum:(album *)_album;
+- (void)selectedAlbumBackToInitialPos:(CGRect)pos;
+- (void)showAlbumTag:(BOOL)show;
+- (void)folderAddMenuButtonOnAction;
+@end

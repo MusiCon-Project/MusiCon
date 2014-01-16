@@ -1,0 +1,21 @@
+//
+// Prefix header for all source files of the 'iLivinMusicUIUX' target in the 'iLivinMusicUIUX' project
+//
+
+#import <Availability.h>
+
+#ifndef __IPHONE_3_0
+#warning "This project uses features only available in iOS SDK 3.0 and later."
+#endif
+
+#ifdef __OBJC__
+    #import <UIKit/UIKit.h>
+    #import <Foundation/Foundation.h>
+    #import <CoreData/CoreData.h>
+    #define DEGREES_TO_RADIANS(__ANGLE__) ((__ANGLE__) / 180.0 * M_PI)
+    #define mainDelegate (AppDelegate *)[UIApplication sharedApplication].delegate  
+    #define APPENDSTRING(newStr, format, ...) newStr = [newStr stringByAppendingFormat:format, __VA_ARGS__]
+    #define RGB(r,g,b)					[UIColor colorWithRed:(r)/255.0 green:(g)/255.0 blue:(b)/255.0 alpha:1.0]
+    #define RGBA(r,g,b,a)				[UIColor colorWithRed:(r)/255.0 green:(g)/255.0 blue:(b)/255.0 alpha:(a)]
+    #define RELEASE_SAFELY(__POINTER)	{if (__POINTER) {[__POINTER release]; __POINTER = nil;}}
+#endif

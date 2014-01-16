@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model name="" userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1171" systemVersion="11D50" minimumToolsVersion="Automatic" macOSVersion="Automatic" iOSVersion="Automatic">
+    <entity name="AlbumInfo" representedClassName="AlbumInfo" syncable="YES">
+        <attribute name="jaketImgURL" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="folder" optional="YES" minCount="1" maxCount="1" deletionRule="Nullify" destinationEntity="FolderInfo" inverseName="album" inverseEntity="FolderInfo" syncable="YES"/>
+    </entity>
+    <entity name="FolderInfo" representedClassName="FolderInfo" syncable="YES">
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="album" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AlbumInfo" inverseName="folder" inverseEntity="AlbumInfo" syncable="YES"/>
+    </entity>
+    <entity name="History" representedClassName="History" syncable="YES">
+        <attribute name="albumImageURL" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="albumTitle" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="artist" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="emotion" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="title" optional="YES" attributeType="String" syncable="YES"/>
+    </entity>
+    <entity name="NowPlaying" representedClassName="NowPlaying" syncable="YES">
+        <attribute name="persistentID" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="pid" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="AlbumInfo" positionX="-207" positionY="177" width="128" height="90"/>
+        <element name="FolderInfo" positionX="-36" positionY="9" width="128" height="75"/>
+        <element name="History" positionX="160" positionY="192" width="128" height="120"/>
+        <element name="NowPlaying" positionX="160" positionY="192" width="128" height="75"/>
+    </elements>
+</model>

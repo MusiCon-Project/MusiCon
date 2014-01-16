@@ -1,0 +1,113 @@
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc
+END
+CustomPlacemark.h
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/CustomPlacemark.h
+END
+BSGoogleV2KmlParser.h
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSGoogleV2KmlParser.h
+END
+BSGoogleV3KmlParser.h
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSGoogleV3KmlParser.h
+END
+BSAddressComponent.h
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSAddressComponent.h
+END
+CustomPlacemark.m
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/CustomPlacemark.m
+END
+BSGoogleV2KmlParser.m
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSGoogleV2KmlParser.m
+END
+BSGoogleV3KmlParser.m
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSGoogleV3KmlParser.m
+END
+BSForwardGeocoder.h
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSForwardGeocoder.h
+END
+BSAddressComponent.m
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSAddressComponent.m
+END
+BSForwardGeocoder.m
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSForwardGeocoder.m
+END
+BSKmlResult.h
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSKmlResult.h
+END
+BSKmlResult.m
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/BSKmlResult.m
+END
+Forward_GeocodingAppDelegate.h
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/Forward_GeocodingAppDelegate.h
+END
+MyAnnotation.h
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/MyAnnotation.h
+END
+Forward_GeocodingViewController.h
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/Forward_GeocodingViewController.h
+END
+Forward_GeocodingAppDelegate.m
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/Forward_GeocodingAppDelegate.m
+END
+MyAnnotation.m
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/MyAnnotation.m
+END
+Forward_GeocodingViewController.m
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/jhnth/!svn/ver/51/trunk/iLuvMusic/iLivinMusicUIUX/modules/LBS/googlemapc/Forward_GeocodingViewController.m
+END

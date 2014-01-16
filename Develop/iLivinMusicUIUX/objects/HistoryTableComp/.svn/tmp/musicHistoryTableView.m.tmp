@@ -1,0 +1,235 @@
+//
+//  musicHistoryTableView.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 2/29/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "musicHistoryTableView.h"
+#import "History.h"
+#import "iLivinMusicMainViewController.h"
+#import "infoViewController.h"
+
+@implementation musicHistoryTableView
+@synthesize parentViewCon;
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.userInteractionEnabled = YES;
+        // Initialization code
+        UIView * headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 5)];
+        
+        UIView * line01 = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 70, 5)];
+        [line01 setBackgroundColor:[UIColor blackColor]];
+        UIView * line02 = [[UIView alloc] initWithFrame:CGRectMake(frame.size.width - 70, 0, 70, 5)];
+        [line02 setBackgroundColor:[UIColor blackColor]];
+        [headerView addSubview:line01];
+        [headerView addSubview:line02];
+        [line01 release];
+        [line02 release];
+        
+        [self updateHistory];
+//        self.tableHeaderView = headerView;
+//        [headerView release];
+    }
+    return self;
+}
+
+- (void)updateHistory
+{
+    historyArray = [History readHistorys];
+}
+//#pragma mark - Touch Event
+////Modified by The Finest Artist at 5.23
+//- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+//{
+//    NSArray *allTouches = [touches allObjects]; 
+//	int count = [allTouches count];
+//	if (count == 1) {
+//		touch = [[allTouches objectAtIndex:0] locationInView:[parentViewCon.view superview]]; 
+//        
+////        NSLog(@"touchBegan : %f", touch.x);
+//        if (parentViewCon.shouldReveal && touch.x > 320 - albumStorageCloseEventMargin)
+//            parentViewCon.shouldMove = TRUE;
+//        if (!parentViewCon.shouldReveal && touch.x > 320 - albumStorageOpenEventMargin)
+//            parentViewCon.shouldMove = TRUE;
+//	}
+//}
+//
+////Modified by The Finest Artist at 5.23
+//- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+//{
+//	NSArray *allTouches = [touches allObjects]; 
+//	int count = [allTouches count]; 
+//    
+//    //shouldReveal : TRUE => opened
+//    //shouldReveal : FALSE => closed
+//    
+//	if (count == 1) {
+//        currentTouch = [[allTouches objectAtIndex:0] locationInView:[parentViewCon.view superview]];
+//        
+//        if (currentTouch.x > parentViewCon.view.frame.origin.x+320)
+//            parentViewCon.shouldReveal = TRUE;
+//        if (currentTouch.x < parentViewCon.view.frame.origin.x+320)
+//            parentViewCon.shouldReveal = FALSE;
+//        
+//        if (!parentViewCon.shouldReveal && currentTouch.x > 320 - albumStorageCloseEventMargin && parentViewCon.shouldMove) {
+////            NSLog(@"opening:%f", currentTouch.x);
+//            if (currentTouch.x < 320 - albumStorageWidth) {
+//                parentViewCon.view.frame = CGRectMake(-albumStorageWidth, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//            } else{
+//                parentViewCon.view.frame = CGRectMake(currentTouch.x - 320, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//            }
+//        }
+//        else if (parentViewCon.shouldReveal && currentTouch.x > 320 - albumStorageCloseEventMargin && parentViewCon.shouldMove) {
+////            NSLog(@"closing:%f", currentTouch.x);
+//            if (320 - currentTouch.x > albumStorageWidth) {
+//                parentViewCon.view.frame = CGRectMake(-albumStorageWidth, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//            } else{
+//                parentViewCon.view.frame = CGRectMake(currentTouch.x - 320, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);   
+//            }
+//        }
+//	}
+//}
+//
+////Modified by The Finest Artist at 5.23
+//- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+//{
+//    NSArray *allTouches = [touches allObjects]; 
+//	int count = [allTouches count]; 
+//    
+//    if (count == 1) {
+//        currentTouch = [[allTouches objectAtIndex:0] locationInView:[parentViewCon.view superview]];
+////        NSLog(@"touchEnded : %f",currentTouch.x);
+//        if (!parentViewCon.shouldReveal && parentViewCon.shouldMove) {
+//            [UIView beginAnimations:@"" context:nil];
+//            [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+//            [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+//            parentViewCon.view.frame = CGRectMake(-albumStorageWidth, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//            parentViewCon.shouldReveal = TRUE;
+//            [UIView commitAnimations];        
+//        } else if (parentViewCon.shouldReveal && parentViewCon.shouldMove) {
+//            [UIView beginAnimations:@"" context:nil];
+//            [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+//            [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+//            parentViewCon.view.frame = CGRectMake(0, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//            parentViewCon.shouldReveal = FALSE;
+//            [UIView commitAnimations];
+//        }
+//    }
+//    
+//    //In case AlbumStorage stuck in the middle
+//    if (parentViewCon.view.frame.origin.x > -30) {
+//        [UIView beginAnimations:@"" context:nil];
+//        [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+//        [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+//        parentViewCon.view.frame = CGRectMake(0, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//        parentViewCon.shouldReveal = FALSE;
+//        [UIView commitAnimations];
+//    } else {
+//        [UIView beginAnimations:@"" context:nil];
+//        [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+//        [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+//        parentViewCon.view.frame = CGRectMake(-albumStorageWidth, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+//        parentViewCon.shouldReveal = TRUE;
+//        [UIView commitAnimations];     
+//    }
+//    
+//    parentViewCon.shouldMove = FALSE;
+//}
+
+//Modified by The Finest Artist at 5.20
+
+#pragma mark - UITableView Delegate & DataSource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    // Return the number of rows in the section.
+    return [historyArray count];
+}
+
+
+// Customize the appearance of table view cells.
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    NSString *CellIdentifier = [NSString stringWithFormat:@"HistoryCell_%d", indexPath.row];
+    
+    selfMusicHistoryCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+    if (cell == nil) {
+        cell = [[[selfMusicHistoryCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+        [cell setSelectionStyle:UITableViewCellSelectionStyleNone];
+    }
+    
+    History * history = [historyArray objectAtIndex:indexPath.row];
+    cell.musicName.text = history.title;
+    cell.artist.text = history.artist;
+    cell.miniAlbumJacket.image = [History readImage:history.albumImageURL title:history.title];
+	
+    return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return 50;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    historyArray = [History readHistorys];
+    [parentViewCon.view bringSubviewToFront:parentViewCon.slideButton];
+    [parentViewCon.view setNeedsDisplay];
+
+<<<<<<< .mine
+    albumInfoViewController * _albumInfoViewController = [[albumInfoViewController alloc] init];
+    History * albumHistory = [historyArray objectAtIndex:indexPath.row];
+    _albumInfoViewController.albumHistory = albumHistory;
+=======
+    infoViewController * _albumInfoViewController = [[infoViewController alloc] init];
+//    _albumInfoViewController.albumHistory = [historyArray objectAtIndex:indexPath.row];
+>>>>>>> .r41
+    
+<<<<<<< .mine
+    //=============sort Array with same Album Title==============//
+    NSMutableArray * sameAlbumArray = [[[NSMutableArray alloc] init] autorelease];
+    for (album * _album in parentViewCon.albumArray)
+        if ([_album.albumTitle isEqualToString:albumHistory.albumTitle]) 
+        {
+            if(![_album.musicTitle isEqualToString:albumHistory.title])
+                [sameAlbumArray addObject:_album];
+            else //MyAlbum 
+            {
+                _albumInfoViewController.lyricString = _album.lyrics;
+                _albumInfoViewController.persistentID = _album.persistentID;
+            }
+
+        }
+    _albumInfoViewController.sameAlbumArray = sameAlbumArray;
+
+    //===========================================================//
+    
+    if(!parentViewCon.shouldReveal)
+=======
+    if(!parentViewCon.opened)
+>>>>>>> .r41
+    {
+        _albumInfoViewController.view.frame = CGRectMake(0, 460, 310, 460);
+        [parentViewCon.view addSubview:_albumInfoViewController.view];
+        [UIView beginAnimations:@"" context:nil];
+        [UIView setAnimationDuration:1.0];
+        _albumInfoViewController.view.frame = CGRectMake(0, 0, 310, 460);
+        [UIView commitAnimations];
+    }
+    else {
+        _albumInfoViewController.view.frame = CGRectMake(-310, 0, 310, 460);
+        [parentViewCon.view addSubview:_albumInfoViewController.view];
+        [UIView beginAnimations:@"" context:nil];
+        [UIView setAnimationDuration:1.0];
+        parentViewCon.view.frame = CGRectMake(0, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+        _albumInfoViewController.view.frame = CGRectMake(0, 0, 310, 460);
+        [UIView commitAnimations];
+    }
+
+
+}
+
+@end

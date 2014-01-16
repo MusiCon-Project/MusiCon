@@ -1,0 +1,386 @@
+//
+//  selfMusicHistoryCell.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 3/13/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "selfMusicHistoryCell.h"
+#import "musicHistoryTableView.h"
+#import "album.h"
+#import "UserDefaultHelper.h"
+#import "iLivinMusicMainViewController.h"
+#import <QuartzCore/QuartzCore.h>
+@implementation selfMusicHistoryCell
+@synthesize musicNameButton;
+@synthesize musicName;
+@synthesize artistButton;
+@synthesize artist;
+@synthesize miniAlbumStroke;
+@synthesize miniAlbumJacket;
+@synthesize emotion;
+@synthesize history;
+- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        // Initialization code
+        musicNameButton = [[UIButton alloc] initWithFrame:CGRectMake(75, 13, 170, 14)];
+        musicNameButton.tag = 1;
+        [musicNameButton addTarget:self.superview action:@selector(musicNameClicked:) forControlEvents:UIControlEventTouchUpInside];
+        UIImage * backgroundImg = [[UIImage imageNamed:@"pop_yellow_his_cell_highlight.jpeg"] stretchableImageWithLeftCapWidth:7.5 topCapHeight:2.5];
+        [musicNameButton setBackgroundImage:backgroundImg forState:UIControlStateHighlighted];
+        [self addSubview:musicNameButton];
+        [musicNameButton release];
+
+        musicName = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 170, 14)];
+        [musicName setFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f]];
+        [musicName setTextColor:[UIColor grayColor]];
+        [musicName setBackgroundColor:[UIColor clearColor]];
+        [musicName setNumberOfLines:0];
+        [musicNameButton addSubview:musicName];
+        [musicName release];
+
+        artistButton = [[UIButton alloc] initWithFrame:CGRectMake(75, 28, 170, 11)];
+        artistButton.tag = 2;
+        [artistButton addTarget:self.superview action:@selector(musicNameClicked:) forControlEvents:UIControlEventTouchUpInside];
+        UIImage * backgroundImg2 = [[UIImage imageNamed:@"pop_yellow_his_cell_highlight.jpeg"] stretchableImageWithLeftCapWidth:7.5 topCapHeight:2.5];
+        [artistButton setBackgroundImage:backgroundImg2 forState:UIControlStateHighlighted];
+        [self addSubview:artistButton];
+        [artistButton release];
+        
+        artist = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 170, 11)];
+        [artist setFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:9.0f]];//9.0f
+        [artist setTextColor:[UIColor grayColor]];
+        [artist setBackgroundColor:[UIColor clearColor]];
+        [artist setNumberOfLines:0];
+        [artistButton addSubview:artist];
+        [artist release];
+
+        miniAlbumStroke = [[UIImageView alloc] initWithFrame:CGRectMake(24.5, 3.5, HistoryAlbumStrokeLength, HistoryAlbumStrokeLength)];
+        [miniAlbumStroke setImage:[UIImage imageNamed:@"pop_yellow_album_border.png"]];
+        
+        miniAlbumJacket = [[UIImageView alloc] initWithFrame:CGRectMake(26.5, 5.5, HistoryAlbumLength, HistoryAlbumLength)];
+        CALayer * albumjaketlayer = [miniAlbumJacket layer];
+        [albumjaketlayer setMasksToBounds:YES];
+        [albumjaketlayer setCornerRadius:HistoryAlbumLength / 2.0];
+        [miniAlbumJacket setImage:[UIImage imageNamed:@"pop_yellow_album_cover.png"]];
+        
+        [self addSubview:miniAlbumStroke];
+        [self addSubview:miniAlbumJacket];
+
+        emotion = [[UIImageView alloc] initWithFrame:CGRectMake(255, 10, 30, 30)];
+        [emotion setImage:[UIImage imageNamed:@"pop_yellow_like_0.png"]];
+        [self addSubview:emotion];
+        [emotion release];
+        
+        emotionSelCallBtn = [[UIButton alloc] initWithFrame:CGRectMake(255, 10, 30, 30)];
+        [emotionSelCallBtn addTarget:[self superview] action:@selector(emoticonButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
+        [emotionSelCallBtn setBackgroundColor:[UIColor clearColor]];
+        [self addSubview:emotionSelCallBtn];
+        [emotionSelCallBtn release];
+        
+//        //emotion Animation
+//        emotion.alpha = 0;
+//        emotionAniFinished = NO;
+//        emotionSet = nil;
+//        emotionSet = [[NSMutableArray alloc] init];
+//        [emotionSet addObject:[NSNumber numberWithInt:0]];
+//
+//        [self emotionAnimation];
+        
+        selectedEmotionIndex = 0;
+    
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    if(emotionSet != nil)
+        [emotionSet release];
+    [super dealloc];
+}
+
+- (void)setEmotionAniFinished:(BOOL)aEmotionAniFinished
+{
+    //restart Animation
+//    if(emotionAniFinished == YES)
+//    {
+//       if(aEmotionAniFinished == NO)
+//           [self emotionAnimation];
+//    }
+    
+//    emotionAniFinished = aEmotionAniFinished;
+//    if(emotionAniFinished == NO)
+//    {
+//        emotionSet = [[NSMutableArray alloc] init];
+//        [emotionSet addObject:[NSNumber numberWithInt:0]];
+//    }
+//    else 
+//    {
+//        [emotionSet release];
+//        emotionSet = nil;
+//    }
+    
+}
+
+- (void)activateAlbumInfo:(BOOL)deact
+{
+    musicNameButton.enabled = deact;
+}
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated
+{
+    [super setSelected:selected animated:animated];
+
+    // Configure the view for the selected state
+}
+#pragma mark - History CoreData
+- (void)saveEmotionNumInHistory:(NSInteger)emotionNum
+{
+    history.emotion = [NSNumber numberWithInt:emotionNum];
+    [[DataModelManager sharedManager] saveToPersistentStore];
+}
+
+#pragma mark - emotion Animation
+- (void)emotionAnimation
+{
+    CABasicAnimation * opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.fromValue = [NSNumber numberWithFloat:0.0];
+    opacityAnimation.toValue = [NSNumber numberWithFloat:1.0];
+    opacityAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+	opacityAnimation.autoreverses = YES;
+    opacityAnimation.repeatCount = 1;
+    opacityAnimation.duration= 0.7;
+	opacityAnimation.delegate = self;
+    
+    [emotion.layer addAnimation:opacityAnimation forKey:@"opacityAnimation"];
+}
+
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag
+{
+    [self changeEmotionImage];
+    if(!emotionAniFinished)
+        [self emotionAnimation];
+    
+}
+
+- (void)changeEmotionImage
+{
+    if([emotionSet count] == currentEmotionIndex)
+        currentEmotionIndex = 0;
+
+    NSNumber * emotionTag = [emotionSet objectAtIndex:currentEmotionIndex];
+    NSString * emotionName = [NSString stringWithFormat:@"pop_yellow_like_%d.png", emotionTag.intValue];
+    [emotion setImage:[UIImage imageNamed:emotionName]];
+    
+    currentEmotionIndex++;
+}
+
+- (void)emotionButtonAction:(id)sender
+{
+    UIButton * emotionOpt = (UIButton *)sender;
+    emotionOpt.selected = !emotionOpt.selected;
+    
+    selectedEmotionIndex = emotionOpt.tag;
+    NSString * emotionName = [NSString stringWithFormat:@"pop_yellow_like_%d.png", selectedEmotionIndex];
+    [emotion setImage:[UIImage imageNamed:emotionName]];
+    
+    [self saveEmotionNumInHistory:selectedEmotionIndex];
+    // Made For Animation
+//    if(emotionOpt.selected == YES)
+//    {
+//        int index = 0; int emotionNumTag = emotionOpt.tag;
+//        for (NSNumber * aEmotionOpt in emotionSet) 
+//        {
+//            if(emotionNumTag > [aEmotionOpt intValue]) 
+//                index++ ; 
+//            else
+//                break;
+//        }
+//        [emotionSet insertObject:[NSNumber numberWithInt:emotionOpt.tag] atIndex:index];
+//    }
+//    else
+//    {
+//        int emotionNumTag = emotionOpt.tag;
+//        for (NSNumber * aEmotionOpt in emotionSet) 
+//        {
+//            if(emotionNumTag == aEmotionOpt.intValue)
+//            {
+//                @synchronized(emotionSet)
+//                {
+//                    [emotionSet removeObject:aEmotionOpt];
+//                }
+//            }
+//        }
+//    }
+}
+
+@end
+
+@implementation settingCell
+@synthesize title;
+@synthesize subTitle;
+@synthesize rightButton;
+@synthesize leftButton;
+- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        // Initialization code
+        
+        title = [[UILabel alloc] initWithFrame:CGRectMake(77, 12, 170, 16)];
+        [title setFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f]];
+        [title setTextColor:[UIColor grayColor]];
+        [self addSubview:title];
+        [title release];
+        
+        subTitle = [[UILabel alloc] initWithFrame:CGRectMake(77, 28, 170, 12)];
+        [subTitle setFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:10.0f]];
+        [subTitle setTextColor:[UIColor grayColor]];
+        [self addSubview:subTitle];
+        [subTitle release];
+        
+        volumeLine = [[UISlider alloc] initWithFrame:CGRectMake(80, 13, 160, 10)];
+        [volumeLine setMinimumTrackImage:[UIImage imageNamed:@"pop_yellow_alarm_History_volume_control.png"] forState:UIControlStateNormal];
+        [volumeLine setMaximumTrackImage:[UIImage imageNamed:@"pop_yellow_alarm_History_volume_control.png"] forState:UIControlStateNormal];
+        [volumeLine setThumbImage:[UIImage imageNamed:@"pop_yellow_alarm_History_volume_control_button.png"] forState:UIControlStateNormal];
+        [self addSubview:volumeLine];
+                
+        leftButton = [[UIButton alloc] initWithFrame:CGRectMake(25, 5, AlbumStrokeLength, AlbumStrokeLength)];
+        rightButton = [[UIButton alloc] initWithFrame:CGRectMake(245, 5, AlbumStrokeLength, AlbumStrokeLength)];
+
+        [self addSubview:leftButton];
+        [self addSubview:rightButton];
+    }
+    return self;
+}
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated
+{
+    [super setSelected:selected animated:animated];
+    
+    // Configure the view for the selected state
+}
+
+#pragma mark - Button Action
+- (void)timerButtonOnAction
+{
+    [UserDefaultHelper setTimerState:!leftButton.selected];
+    [[NSNotificationCenter defaultCenter] postNotificationName:TIMER_NOTI object:nil];
+}
+
+- (void)alarmButtonOnAction
+{
+    [UserDefaultHelper setAlarmState:!leftButton.selected];
+    [[NSNotificationCenter defaultCenter] postNotificationName:ALARM_NOTI object:nil];
+}
+
+- (void)timerAutoButtonOnAction
+{
+    [UserDefaultHelper setAutoTimerState:!leftButton.selected];
+    [[NSNotificationCenter defaultCenter] postNotificationName:AUTO_TIMER_NOTI object:nil];
+}
+
+- (void)alarmAutoButtonOnAction
+{
+    [UserDefaultHelper setAutoAlarmState:!leftButton.selected];
+    [[NSNotificationCenter defaultCenter] postNotificationName:AUTO_ALARM_NOTI object:nil];
+}
+
+#pragma mark - View Configuration 
+- (void)setSettingCellView:(recordType)RecordType indexPathRow:(NSInteger)row;
+{
+    title.hidden = NO;
+    subTitle.hidden = NO;
+    volumeLine.hidden = YES;
+    
+    switch (row) {
+        case 0:
+            if(RecordType == TimerType)
+            {
+                [title setText:@"Timer ON"];
+                [subTitle setText:@"4:00 PM"];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Time_off.png"] forState:UIControlStateNormal];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Time.png"] forState:UIControlStateSelected];
+                [leftButton addTarget:self action:@selector(timerButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+                [rightButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Time_picker.png"] forState:UIControlStateNormal];
+                [rightButton addTarget:self.superview action:@selector(alarmTimerClicked) forControlEvents:UIControlEventTouchUpInside];
+                
+            }
+            else if(RecordType == AlarmType)
+            {
+                [title setText:@"Alarm ON"];
+                [subTitle setText:@"4:00 PM"];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_alarm_off.png"] forState:UIControlStateNormal];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_alarm_on.png"] forState:UIControlStateSelected];
+                [leftButton addTarget:self action:@selector(alarmButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+                [rightButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Time_picker.png"] forState:UIControlStateNormal];
+                [rightButton addTarget:self.superview action:@selector(alarmTimerClicked) forControlEvents:UIControlEventTouchUpInside];
+            }
+            break;
+        case 1:
+            if(RecordType == TimerType)
+            {
+                [title setText:@"Auto Timer"];
+                [subTitle setText:@"Use Sensor"];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_Auto_off.png"] forState:UIControlStateNormal];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_Auto_On.png"] forState:UIControlStateSelected];
+                [leftButton addTarget:self action:@selector(timerAutoButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+                [rightButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Warning.png"] forState:UIControlStateNormal];
+                [rightButton addTarget:self.superview action:@selector(autoAlarmTimerExplainationClicked) forControlEvents:UIControlEventTouchUpInside];
+            }
+            else if(RecordType == AlarmType)
+            {
+                [title setText:@"Auto Alarm"];
+                [subTitle setText:@"Use Sensor"];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_Auto_off.png"] forState:UIControlStateNormal];
+                [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_Auto_On.png"] forState:UIControlStateSelected];
+                [leftButton addTarget:self action:@selector(alarmAutoButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+                [rightButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Warning.png"] forState:UIControlStateNormal];
+                [rightButton addTarget:self.superview action:@selector(autoAlarmTimerExplainationClicked) forControlEvents:UIControlEventTouchUpInside];
+            }
+            break;
+        case 2:
+            [leftButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_Volume.png"] forState:UIControlStateNormal];
+            [rightButton setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Vgraph.png"] forState:UIControlStateNormal];
+            [rightButton addTarget:self.superview action:@selector(volumeExplainationClicked) forControlEvents:UIControlEventTouchUpInside];
+            title.hidden = YES;
+            subTitle.hidden = YES;
+            volumeLine.hidden = NO;
+            break;
+        case 3:
+            [title setText:@"Last Played Song"];
+            [subTitle setText:@"아이유"];
+            [leftButton setImage:[UIImage imageNamed:@"pop_yellow_Alarm_History_music.png"] forState:UIControlStateNormal];
+            [rightButton setImage:[UIImage imageNamed:@"pop_yellow_alarm_History_list_nowplaying.png"] forState:UIControlStateNormal];
+            [rightButton addTarget:self.superview action:@selector(alarmMusicClicked) forControlEvents:UIControlEventTouchUpInside];
+        default:
+            break;
+    }
+}
+
+- (void)updateSettingCellView:(recordType)RecordType indexPathRow:(NSInteger)row
+{    
+    switch (row) {  
+        case 0:     
+            if(RecordType == AlarmType)
+                leftButton.selected = [UserDefaultHelper getAlarmState];
+            else if(RecordType == TimerType)
+                leftButton.selected = [UserDefaultHelper getTimerState];
+            break;
+        case 1:
+            if(RecordType == AlarmType)
+                leftButton.selected = [UserDefaultHelper getAutoAlarmState];
+            else if(RecordType == TimerType)
+                leftButton.selected = [UserDefaultHelper getAutoTimerState];
+            break;
+
+        default:
+            break;
+    }
+}
+
+@end

@@ -1,0 +1,1247 @@
+//
+//  iLivinMusicMainViewController.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 2/11/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "iLivinMusicMainViewController.h"
+#import "DataModelManager.h"
+#import "History.h"
+#import "AlbumInfo.h"
+#import "FolderInfo.h"
+#import "Album.h"
+#import "NowPlaying.h"
+
+@interface iLivinMusicMainViewController (internal)
+- (void)setGestureView;
+- (void)setRecordView;
+- (void)setAlbumView:(int)albumTotalCount;
+- (void)setAlbumBgView;
+- (void)setTableView;
+- (void)setTimerAlarmView;
+- (void)historyDataInitialize;
+@end
+
+typedef enum
+{
+    SongType,
+    ArtistType,
+    AlbumType,
+    FolderType,
+}MenuType;
+
+@implementation iLivinMusicMainViewController
+@synthesize shouldReveal;
+@synthesize folderArray;
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)didReceiveMemoryWarning
+{
+    // Releases the view if it doesn't have a superview.
+    [super didReceiveMemoryWarning];
+    
+    // Release any cached data, images, etc that aren't in use.
+}
+
+#pragma mark - View lifecycle
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    // Do any additional setup after loading the view from its nib.
+    self.view.frame = CGRectMake(0, 20, 320 + AlbumStrokeLength + AlbumStrokeLength / sqrt(2), self.view.frame.size.height);
+//    UIImageView * bg = [[UIImageView alloc] initWithFrame:CGRectMake(albumOriginX, 0, AlbumStrokeLength +  AlbumStrokeLength / sqrt(2), 460)];
+    
+    albumArray = [[NSMutableArray alloc] init];
+    selectedAlbumArray = [[NSMutableArray alloc] init];
+    subMenus = [[NSMutableArray alloc] init];
+    albumsInFolderArr = [[NSMutableArray alloc] init];
+
+    [self setRecordView];
+    [self setTableView];
+    [self setTimerAlarmView];
+    
+    shouldReveal = NO;
+    longLeftSwipeDetected = NO;
+    folderAddActivated = NO;
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(volumeChanged) name:MPMusicPlayerControllerVolumeDidChangeNotification object:nil];
+    [musicPlayer beginGeneratingPlaybackNotifications];
+    
+    audioHelper = [[AudioHelper alloc] init];
+    [audioHelper setDelegate:self];
+    [audioHelper updateIPodLibrary];
+    
+    UIImageView * center = [[UIImageView alloc] initWithFrame:CGRectMake(160, 130, 1, 1)];
+    [center setBackgroundColor:[UIColor redColor]];
+    [self.view addSubview:center];
+}
+
+- (void)viewDidUnload
+{
+    [super viewDidUnload];
+    // Release any retained subviews of the main view.
+    // e.g. self.myOutlet = nil;
+}
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+    // Return YES for supported orientations
+    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [musicPlayer endGeneratingPlaybackNotifications];
+    [albumArray release];
+    [folderArray release];
+    
+    [subMenus release];
+    [albumsInFolderArr release];
+    [super dealloc];
+}
+
+#pragma mark - View Configuration & History
+- (void)setRecordView
+{
+    // album bg
+    bg = [[UIImageView alloc] initWithFrame:CGRectMake(albumOriginX, 0, 70, 460)];
+    [bg setImage:[UIImage imageNamed:@"pop_yellow_album_storage_bg.png"]];
+    [self.view addSubview:bg];
+    [bg release];
+
+    //record
+    _record = [[record alloc] initWithFrame:CGRectMake((320 - recordLength) / 2, recordMargin, recordLength, recordLength) type:RecordType];
+    [self.view addSubview:_record];
+    [_record release];  
+    
+    //recordLine
+    recordLine * _recordLine = [[recordLine alloc] initWithFrame:CGRectMake(35, recordMargin, 12 + recordLineWidth, recordLineHeight)];
+    [_recordLine setDelegate:self];
+    [self.view addSubview:_recordLine];
+    [_recordLine release];  
+    
+    //set RecordLine in _record
+    _record.RecordLine = _recordLine;
+    
+    //volumeView
+    musicPlayer = [MPMusicPlayerController iPodMusicPlayer];
+    NSInteger volumeSize = musicPlayer.volume * 15.0;
+    volumeView = [[UIImageView alloc] initWithFrame:CGRectMake(22, 75, 40, 120)];
+    [volumeView setImage:[UIImage imageNamed:[NSString stringWithFormat:@"pop_yellow_volume%d.png", volumeSize]]];
+    [self.view addSubview:volumeView];
+    [volumeView release];
+    
+    MPVolumeView * mpview = [[MPVolumeView alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+//    mpview.hidden = YES;
+    [self.view addSubview:mpview];
+    [mpview release];
+}
+
+- (void)setAlbumBgView
+{    
+    // album bg
+//    UIImageView * bg_cut = [[UIImageView alloc] initWithFrame:CGRectMake(albumOriginX, 0, 70, 160)];
+//    [bg_cut setImage:[UIImage imageNamed:@"pop_yellow_album_storage_bg_cut.png"]];
+//    [self.view addSubview:bg_cut];
+//    [bg_cut release];
+    
+    //slideButton
+    slideButton = [[UIButton alloc] initWithFrame:CGRectMake(280, 0, 40, 30)];
+    [slideButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_bubble.png"] forState:UIControlStateNormal];
+    [slideButton addTarget:self action:@selector(slideButtonOnAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:slideButton];
+    [slideButton release];
+
+    //buttons
+    shopButton = [[UIButton alloc] initWithFrame:CGRectMake(albumOriginX + 50, 5, 20, 20)];
+    [shopButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_shop_icon.png"] forState:UIControlStateNormal];
+    [shopButton addTarget:self action:@selector(basicButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:shopButton];
+    [shopButton release];
+    
+    recentMusicButton = [[UIButton alloc] initWithFrame:CGRectMake(albumOriginX, 1, AlbumStrokeLength, AlbumStrokeLength)];
+    recentMusicButton.tag = 0;
+    [recentMusicButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_now_playing.png"] forState:UIControlStateNormal];
+    [recentMusicButton addTarget:self action:@selector(basicButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:recentMusicButton];
+    [recentMusicButton release];
+    
+    menuButton = [[UIButton alloc] initWithFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 31, AlbumStrokeLength, AlbumStrokeLength)];
+    menuButton.tag = 1;
+    [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_song.png"] forState:UIControlStateNormal];
+    [menuButton addTarget:self action:@selector(basicButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:menuButton];
+    [menuButton release];
+
+    preSelectedmenu = 0;
+}
+- (void)setTableView
+{
+    //retrieve Data from DataModel
+    [self historyDataInitialize];
+    
+    //header View
+    UIView * headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 260, 310, HistoryHeaderHeight)];    
+    UIView * line01 = [[UIView alloc] initWithFrame:CGRectMake(0, 0, HistoryHeaderLineLength, 2)];
+    [line01 setBackgroundColor:[UIColor grayColor]];
+    UIView * line02 = [[UIView alloc] initWithFrame:CGRectMake(320 - HistoryHeaderLineLength, 0, HistoryHeaderLineLength, 2)];
+    [line02 setBackgroundColor:[UIColor grayColor]];
+    UILabel * dateTitle = [[UILabel alloc] initWithFrame:CGRectMake(120, 0, 80, HistoryHeaderHeight)];
+    [dateTitle setFont:[UIFont boldSystemFontOfSize:10.0f]];
+    [dateTitle setText:@"TODAY"];
+    [dateTitle setTextAlignment:UITextAlignmentCenter];
+    [dateTitle setTextColor:[UIColor grayColor]];
+//    [headerView addSubview:line01];
+//    [headerView addSubview:line02];
+    [headerView addSubview:dateTitle];
+    [line01 release];
+    [line02 release];
+    [dateTitle release];
+    [self.view addSubview:headerView];
+    
+    //HistoryTableView    
+    _musicHistoryTableView = [[musicHistoryTableView alloc] initWithFrame:CGRectMake(0, 270, 310, 480-270)];
+
+    _musicHistoryTableView.delegate = self;
+    _musicHistoryTableView.dataSource = self;
+    _musicHistoryTableView.parentViewCon = self;
+    [self.view addSubview:_musicHistoryTableView];
+    [_musicHistoryTableView release];
+}
+
+- (void)setTimerAlarmView
+{
+    BOOL timerActivate = [[NSUserDefaults standardUserDefaults] boolForKey:@"timerButtonActivate"];
+    BOOL alarmActivate = [[NSUserDefaults standardUserDefaults] boolForKey:@"alarmButtonActivate"];
+    
+    timerButton = [[utilButton alloc] initWithFrame:CGRectMake(timeButtonMargin, 200 + recordMargin, 50, 50) withButtonType:TimerType withActivate:timerActivate buttonPos:LeftButton];
+    timerButton.Record = _record;
+    [self.view addSubview:timerButton];
+    [timerButton release];
+    
+    alarmButton = [[utilButton alloc] initWithFrame:CGRectMake(320 - timeButtonMargin - 50, 200 + recordMargin, 50, 50) withButtonType:AlarmType withActivate:alarmActivate buttonPos:RightButton];
+    alarmButton.Record = _record;
+    [self.view addSubview:alarmButton];
+    [alarmButton release];
+}
+
+#pragma mark - albumConfiguration
+- (void)setAlbumView:(int)albumTotalNum
+{
+    //albums
+    for (int i = 0; i < albumTotalNum; i++) 
+    {
+        album * _album;
+        if(i%2 ==0)
+        {
+            //            _album = [[album alloc] initWithFrame:CGRectMake(albumOriginX, AlbumStrokeLength / sqrt(2) + 30 * i, AlbumStrokeLength, AlbumStrokeLength)];
+            _album = [[album alloc] initWithFrame:CGRectMake(albumOriginX, 121 + 30 * i, AlbumStrokeLength, AlbumStrokeLength)];
+            _album.horizonUp = NO;
+        }
+        else
+        {
+            _album = [[album alloc] initWithFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 121 + 30 * i, AlbumStrokeLength, AlbumStrokeLength)];
+            _album.horizonUp = YES;
+        }
+        [_album setDelegate:self];
+        [_album setMainViewCon:self];
+        
+        [self.view addSubview:_album];
+        [albumArray addObject:_album];
+    }
+}
+
+- (void)setArtistSortView
+{
+    NSMutableDictionary * artistDic = [[NSMutableDictionary alloc] init];
+    
+    for (album * _album in albumArray) 
+    {
+        folderButton * artistFol = [artistDic objectForKey:_album.artist];
+        if(artistFol == nil)
+        {
+            artistFol = [[folderButton alloc] init];
+            artistFol.folderImage.image = _album.albumjaket.image;
+            artistFol.artist = _album.artist;
+//            [artistFol setAlbumjaket:_album.smalljaket bigImage:_album.bigjaket recordImage:_album.recordStroke];
+            [artistDic setObject:artistFol forKey:_album.artist];
+        }
+    }
+        
+    int i = 2;
+    for (NSString * key in [artistDic allKeys]) 
+    {
+        folderButton * _album = [artistDic objectForKey:key];
+        _album.index = i - 2;
+        _album.folderType = ArtistButtonType;
+        [_album addTarget:self action:@selector(folderButtonOnAction:) forControlEvents:UIControlEventTouchUpInside];
+        if(i%2 ==0)
+        {
+            _album.frame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+//            _album.initialFrame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+//            _album.horizonUp = NO;
+        }
+        else
+        {
+            _album.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+//            _album.initialFrame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+//            _album.horizonUp = YES;
+        }
+//        [_album setDelegate:self];
+//        [_album setMainViewCon:self];
+        
+        [self.view addSubview:_album];
+        [_album release];
+        [subMenus addObject:_album];
+        i++;
+    }    
+}
+
+- (void)setAlbumTitleSortView
+{
+    NSMutableDictionary * artistDic = [[NSMutableDictionary alloc] init];
+    
+    for (album * _album in albumArray) 
+    {
+        folderButton * artistFol = [artistDic objectForKey:_album.albumTitle];
+        if(artistFol == nil)
+        {
+            artistFol = [[folderButton alloc] init];
+            artistFol.folderImage.image = _album.albumjaket.image;
+            artistFol.albumTitle = _album.albumTitle;
+//            [artistFol setAlbumjaket:_album.smalljaket bigImage:_album.bigjaket recordImage:_album.recordStroke];
+            [artistDic setObject:artistFol forKey:_album.albumTitle];
+        }
+    }
+    
+    int i = 2;
+    for (NSString * key in [artistDic allKeys]) 
+    {
+        folderButton * _album = [artistDic objectForKey:key];
+        _album.index = i - 2;
+        _album.folderType = AlbumTitleButtonType;
+        [_album addTarget:self action:@selector(folderButtonOnAction:) forControlEvents:UIControlEventTouchUpInside];
+        if(i%2 ==0)
+        {
+            _album.frame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+        }
+        else
+        {
+            _album.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+        }
+        
+        [self.view addSubview:_album];
+        [_album release];
+        [subMenus addObject:_album];
+        i++;
+    }
+}
+
+- (void)setNowPlayingView
+{
+    NSMutableArray * nowPlayings = [NowPlaying readNowPlayings];
+    int i = 2;
+    for (NowPlaying * nowPlaying in nowPlayings) {
+        for (album * _album in albumArray) 
+        {
+            if([_album.persistentID doubleValue]== nowPlaying.persistentID)
+            {
+                album * playedAlbum = [[album alloc] init];
+                playedAlbum.albumjaket.image = _album.albumjaket.image;
+                if(i%2 ==0)
+                {
+                    playedAlbum.frame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+                    playedAlbum.initialFrame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+                    playedAlbum.horizonUp = NO;
+                }
+                else
+                {
+                    playedAlbum.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+                    playedAlbum.initialFrame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+                    playedAlbum.horizonUp = YES;
+                }
+                [playedAlbum setDelegate:self];
+                [playedAlbum setMainViewCon:self];
+                
+                [self.view addSubview:playedAlbum];
+                [subMenus addObject:playedAlbum];
+                i++;
+            }
+        }
+    }
+}
+
+- (void)showAlbum:(BOOL)show
+{
+    for (album * _album in albumArray) 
+        [_album setHidden:!show];
+}
+
+- (void)showAlbumTag:(BOOL)show
+{
+    for (album * _album in albumArray)
+        [_album.nameTag setHidden:!show];
+}
+
+- (void)collectSelectedAlbumToMovingAlbum:(CGRect)pos mainAlbum:(album *)mainAlbum
+{
+    for (album * _album in selectedAlbumArray) 
+    {
+        [UIView beginAnimations:@"" context:_album];
+        [UIView setAnimationDuration:0.3];
+        if(![_album isEqual:mainAlbum])
+            [UIView setAnimationDelegate:self];
+        _album.frame = pos;
+        _album.albumStroke.frame = CGRectMake(_album.albumStroke.frame.origin.x - AlbumStrokeLength / 2, _album.albumStroke.frame.origin.y - AlbumStrokeLength / 2, AlbumStrokeLength * 2, AlbumStrokeLength * 2);
+        [_album.albumStroke setImage:_album.bigStroke];
+        _album.albumjaket.frame = CGRectMake(_album.albumjaket.frame.origin.x - AlbumLength / 2, _album.albumjaket.frame.origin.y - AlbumLength / 2, AlbumLength * 2, AlbumLength * 2);
+        [_album.albumjaket setImage:_album.bigjaket];
+        [_album.albumjaketlayer setCornerRadius:AlbumLength];
+        [UIView commitAnimations];
+    }
+}
+
+- (void)animationDidStop:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context
+{
+    NSLog(@"HELLO!!!!!");
+    album * _album = context;
+    _album.hidden = YES;
+}
+
+- (void)selectedAlbumBackToInitialPos
+{
+    
+    for (album * _album in selectedAlbumArray) 
+    {
+        _album.hidden = NO;
+        [UIView beginAnimations:@"" context:nil];
+        [UIView setAnimationDuration:0.3];
+        _album.albumStroke.frame = CGRectMake(_album.albumStroke.frame.origin.x + AlbumStrokeLength / 2, _album.albumStroke.frame.origin.y + AlbumStrokeLength / 2, AlbumStrokeLength, AlbumStrokeLength);
+        [_album.albumStroke setImage:_album.smallStroke];
+        _album.albumjaket.frame = CGRectMake(_album.albumjaket.frame.origin.x + AlbumLength / 2, _album.albumjaket.frame.origin.y + AlbumLength / 2, AlbumLength, AlbumLength);
+        [_album.albumjaket setImage:_album.smalljaket];
+        [_album.albumjaketlayer setCornerRadius:AlbumLength / 2.0];
+        _album.frame = _album.initialFrame;
+        [UIView commitAnimations];
+    }
+}
+
+- (void)addAlbumInSelectedAlbumArr:(album *)_album
+{
+    [selectedAlbumArray removeObjectIdenticalTo:_album];
+    [selectedAlbumArray addObject:_album];
+}
+
+- (void)removeAlbumFromSelectedAlbumArr:(album *)_album
+{
+    [selectedAlbumArray removeObjectIdenticalTo:_album];
+}
+
+- (void)setFolders
+{
+    UIButton * folderAdd = [[UIButton alloc] initWithFrame:CGRectMake(albumOriginX, 61, AlbumStrokeLength, AlbumStrokeLength)];
+    [folderAdd setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_add.png"] forState:UIControlStateNormal];
+    [folderAdd addTarget:self action:@selector(folderAddButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:folderAdd];
+    [folderAdd release];
+    [subMenus addObject:folderAdd];
+    
+    folderArray = [FolderInfo readFolders];
+    int i = 3;
+    for (FolderInfo * folder in folderArray) 
+    {
+        folderButton * folderBtn = [[folderButton alloc] init];
+        folderBtn.folderType = UserSelButtonType;
+        folderBtn.index = i - 3;
+        [folderBtn setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_closed_blue.png"] forState:UIControlStateNormal];
+        [folderBtn addTarget:self action:@selector(folderButtonOnAction:) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:folderBtn];
+        [folderBtn release];
+        [subMenus addObject:folderBtn];
+        folderBtn.selected = NO;
+        
+        if(i%2 ==0)
+            folderBtn.frame = CGRectMake(albumOriginX, 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+        else
+            folderBtn.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), 1 + 30 * i, AlbumStrokeLength, AlbumStrokeLength);
+        i++;
+    }
+}
+
+- (void)removeSubMenus
+{
+    for (id subMenu in subMenus) 
+        [subMenu removeFromSuperview];
+
+    for (id albumsInFolder in albumsInFolderArr) 
+        [albumsInFolder removeFromSuperview];
+
+    [subMenus removeAllObjects];
+    [albumsInFolderArr removeAllObjects];
+}
+
+- (void)historyDataInitialize
+{
+    //    historyArray = [[NSMutableArray alloc] init];
+//    historyArray = [History readHistorys];
+    historyArray = [History readHistorys];
+}
+
+- (void)setCurrentHistory:(UIImage *)albumImage Title:(NSString*)title artist:(NSString *)artist
+{
+
+}
+
+
+
+#pragma mark - Button Action 
+- (void)basicButtonAction:(UIButton *)button
+{
+    [self removeSubMenus];
+    
+    if(button != shopButton)
+        [shopButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_shop_icon.png"] forState:UIControlStateNormal]; 
+    else
+        [shopButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_shop_icon_chosen.png"] forState:UIControlStateNormal];
+    
+    if(button != recentMusicButton)
+        [recentMusicButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_now_playing.png"] forState:UIControlStateNormal]; 
+    else
+    {
+        [recentMusicButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_now_playing_chosen.png"] forState:UIControlStateNormal]; 
+        [self showAlbum:NO];
+        [self setNowPlayingView];
+    }
+
+    if(button != menuButton)
+    {
+        if(preSelectedmenu == SongType)
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_song.png"] forState:UIControlStateNormal]; 
+        else if(preSelectedmenu == ArtistType)
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_artist.png"] forState:UIControlStateNormal]; 
+        else if(preSelectedmenu == AlbumType)
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_album.png"] forState:UIControlStateNormal]; 
+        else
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder.png"] forState:UIControlStateNormal]; 
+    }
+    else
+    {
+        folderAddActivated = NO;
+        preSelectedmenu++;
+        if (preSelectedmenu == 4)
+            preSelectedmenu = 0;
+    
+        if(preSelectedmenu == SongType)
+        {
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_song_chosen.png"] forState:UIControlStateNormal]; 
+            [self showAlbum:YES];
+        }
+        else if(preSelectedmenu == ArtistType)
+        {
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_artist_chosen.png"] forState:UIControlStateNormal]; 
+            [self showAlbum:NO];
+            [self setArtistSortView];
+        }
+        else if(preSelectedmenu == AlbumType)
+        {
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_album_chosen.png"] forState:UIControlStateNormal]; 
+            [self setAlbumTitleSortView];
+        }
+        else if(preSelectedmenu == FolderType)
+        {
+            [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_chosen.png"] forState:UIControlStateNormal]; 
+            [self setFolders];
+        }
+    }
+}
+
+- (void)folderAddMenuButtonOnAction
+{
+    preSelectedmenu--;
+    folderAddActivated = YES;
+    [self showAlbum:NO];        
+    [self setFolders];
+    [menuButton removeTarget:self action:@selector(folderAddMenuButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+    [menuButton addTarget:self action:@selector(basicButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)folderAddButtonOnAction
+{
+    NSString * defaultName = [NSString stringWithFormat:@"Folder#%d", [folderArray count]];
+    [FolderInfo saveFolder:defaultName];
+    [[DataModelManager sharedManager] saveToPersistentStore];
+    
+    [self removeSubMenus];
+    [self setFolders];
+}
+
+- (void)folderButtonOnAction:(id)sender
+{
+    folderButton * folderBtn = (folderButton *)sender;
+    
+    int albumIndex = folderBtn.index + 1 + 2;
+    int albumInFolderNum = 0;
+    if(folderBtn.folderType == ArtistButtonType)
+    {
+        for (album * _album in albumArray) 
+        {
+            if(folderBtn.selected == NO)
+            {
+                //show album
+                if([_album.artist isEqualToString:folderBtn.artist])
+                {
+                    album * albumInFolder = [[album alloc] init];
+                    albumInFolder.delegate = self;
+                    albumInFolder.artist = _album.artist;
+                    albumInFolder.folderIndex = folderBtn.index;
+                    albumInFolder.albumjaket.image = _album.smalljaket;
+                    [albumInFolder setAlbumjaket:_album.smalljaket bigImage:_album.bigjaket recordImage:_album.recordStroke];
+
+                    if(folderBtn.frame.origin.x == albumOriginX)
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        else
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    else
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        else
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    
+                    [self.view addSubview:albumInFolder];
+                    [albumsInFolderArr addObject:albumInFolder];
+                    [albumInFolder release];
+                    albumIndex++;
+                    albumInFolderNum++;
+                }
+            }
+        }
+    
+        if(folderBtn.selected == YES)
+        {
+            NSMutableArray * albumInFolderCopy = [[albumsInFolderArr copy] autorelease];
+            for (album * _album in albumInFolderCopy) 
+            {
+                if([_album.artist isEqualToString:folderBtn.artist])
+                {
+                    [_album removeFromSuperview];
+                    [albumsInFolderArr removeObject:_album];
+                    albumInFolderNum--;
+                }
+            }
+        }
+        
+        //push Albums
+        for (album * _album in albumsInFolderArr) 
+        {
+            if(_album.folderIndex > folderBtn.index)
+            {
+                if(albumInFolderNum % 2 == 0)
+                    [_album setFrameWithInitialFrame:CGRectMake(_album.frame.origin.x, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                else
+                {
+                    if(albumOriginX == _album.frame.origin.x)
+                    {
+                        [_album setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    else 
+                    {
+                        [_album setFrameWithInitialFrame:CGRectMake(albumOriginX, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                }
+            }
+            NSLog(@"album_x:%f", _album.frame.origin.x);
+        }
+        
+        //push Folders
+        for(int i = folderBtn.index + 1; i < [subMenus count]; i++)
+        {
+            album * theAlbum = [subMenus objectAtIndex:i];
+            if(albumInFolderNum%2 == 0)
+                theAlbum.frame = CGRectMake(theAlbum.frame.origin.x, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+            else
+            {
+                if(albumOriginX == theAlbum.frame.origin.x)
+                {
+                    theAlbum.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                }
+                else 
+                {
+                    theAlbum.frame = CGRectMake(albumOriginX, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                }
+            }
+        }
+    }
+    else if(folderBtn.folderType == AlbumTitleButtonType)
+    {
+        for (album * _album in albumArray) 
+        {
+            if(folderBtn.selected == NO)
+            {
+                //show album
+                if([_album.albumTitle isEqualToString:folderBtn.albumTitle])
+                {
+                    album * albumInFolder = [[album alloc] init];
+                    albumInFolder.delegate = self;
+                    albumInFolder.albumTitle = _album.albumTitle;
+                    albumInFolder.folderIndex = folderBtn.index;
+                    albumInFolder.albumjaket.image = _album.smalljaket;
+                    [albumInFolder setAlbumjaket:_album.smalljaket bigImage:_album.bigjaket recordImage:_album.recordStroke];
+                    if(folderBtn.frame.origin.x == albumOriginX)
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            albumInFolder.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength);
+                        else
+                            albumInFolder.frame = CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength);
+                    }
+                    else
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            albumInFolder.frame = CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength);
+                        else
+                            albumInFolder.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength);
+                    }
+                    
+                    [self.view addSubview:albumInFolder];
+                    [albumsInFolderArr addObject:albumInFolder];
+                    [albumInFolder release];
+                    albumIndex++;
+                    albumInFolderNum++;
+                }
+            }
+        }
+        
+        if(folderBtn.selected == YES)
+        {
+            NSMutableArray * albumInFolderCopy = [[albumsInFolderArr copy] autorelease];
+            for (album * _album in albumInFolderCopy) 
+            {
+                if([_album.albumTitle isEqualToString:folderBtn.albumTitle])
+                {
+                    [_album removeFromSuperview];
+                    [albumsInFolderArr removeObject:_album];
+                    albumInFolderNum--;
+                }
+            }
+        }
+        
+        //push Albums
+        for (album * _album in albumsInFolderArr) 
+        {
+            if(_album.folderIndex > folderBtn.index)
+            {
+                if(albumInFolderNum % 2 == 0)
+                    [_album setFrameWithInitialFrame:CGRectMake(_album.frame.origin.x, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                else
+                {
+                    if(albumOriginX == _album.frame.origin.x)
+                    {
+                        [_album setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    else 
+                    {
+                        [_album setFrameWithInitialFrame:CGRectMake(albumOriginX, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                }
+            }
+            NSLog(@"album_x:%f", _album.frame.origin.x);
+        }
+        
+        //push Folders
+        for(int i = folderBtn.index + 1; i < [subMenus count]; i++)
+        {
+            album * theAlbum = [subMenus objectAtIndex:i];
+            if(albumInFolderNum%2 == 0)
+                theAlbum.frame = CGRectMake(theAlbum.frame.origin.x, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+            else
+            {
+                if(albumOriginX == theAlbum.frame.origin.x)
+                {
+                    theAlbum.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                }
+                else 
+                {
+                    theAlbum.frame = CGRectMake(albumOriginX, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                }
+            }
+        }
+    }
+    else if(folderBtn.folderType == UserSelButtonType)
+    {
+        if(folderBtn.selected == NO)
+        {
+            [folderBtn setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_opend_chosen.png"] forState:UIControlStateNormal];
+        }
+        else
+            [folderBtn setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_closed_blue.png"] forState:UIControlStateNormal];
+
+        folderArray = [FolderInfo readFolders];
+        FolderInfo * folderInfo = [folderArray objectAtIndex:folderBtn.index];
+        
+        if(folderAddActivated == YES)
+        {
+            for (album * _album in selectedAlbumArray) {
+                NSString * albumImgURL = [History saveImage:_album.recordStroke title:_album.musicTitle];
+                [AlbumInfo saveAlbum:_album.musicTitle imageURL:albumImgURL inFolder:folderInfo]; 
+                [[DataModelManager sharedManager] saveToPersistentStore];
+            }
+        }
+        else {
+            int albumInFolderNum = 0;
+            
+            //show albums
+            if(folderBtn.selected == NO)
+            {
+                for(AlbumInfo * _album in folderInfo.album)
+                {
+                    album * albumInFolder = [[album alloc] init];
+                    UIImage * jaketImage = [History readImage:_album.jaketImgURL title:_album.name];
+                    albumInFolder.delegate = self;
+                    albumInFolder.albumTitle = _album.name;
+                    albumInFolder.folderIndex = folderBtn.index;
+                    albumInFolder.albumjaket.image = jaketImage;
+                    [albumInFolder setAlbumjaket:jaketImage bigImage:jaketImage recordImage:jaketImage];
+
+                    if(folderBtn.frame.origin.x == albumOriginX)
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        else
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    else
+                    {
+                        if(albumInFolderNum % 2 == 0)
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX, folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        else
+                            [albumInFolder setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), folderBtn.frame.origin.y + (albumInFolderNum + 1) * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    }
+                    [self.view addSubview:albumInFolder];
+                    [albumsInFolderArr addObject:albumInFolder];
+                    [albumInFolder release];
+                    albumInFolderNum++;
+                }
+            }
+            
+            if(folderBtn.selected == YES)
+            {
+                NSMutableArray * albumInFolderCopy = [[albumsInFolderArr copy] autorelease];
+                for (album * _album in albumInFolderCopy) 
+                {
+                    if(_album.folderIndex == folderBtn.index)
+                    {
+                        [_album removeFromSuperview];
+                        [albumsInFolderArr removeObject:_album];
+                        albumInFolderNum--;
+                    }
+                }
+            }
+            
+            //push Albums
+            for (album * _album in albumsInFolderArr) 
+            {
+                if(_album.folderIndex > folderBtn.index)
+                {
+                    if(albumInFolderNum % 2 == 0)
+                        [_album setFrameWithInitialFrame:CGRectMake(_album.frame.origin.x, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                    else
+                    {
+                        if(albumOriginX == _album.frame.origin.x)
+                        {
+                            [_album setFrameWithInitialFrame:CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        }
+                        else 
+                        {
+                            [_album setFrameWithInitialFrame:CGRectMake(albumOriginX, _album.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength)];
+                        }
+                    }
+                }
+                NSLog(@"album_x:%f", _album.frame.origin.x);
+            }
+            
+            //push Folders
+            for(int i = folderBtn.index + 2; i < [subMenus count]; i++)
+            {
+                album * theAlbum = [subMenus objectAtIndex:i];
+                if(albumInFolderNum%2 == 0)
+                    theAlbum.frame = CGRectMake(theAlbum.frame.origin.x, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                else
+                {
+                    if(albumOriginX == theAlbum.frame.origin.x)
+                    {
+                        theAlbum.frame = CGRectMake(albumOriginX + AlbumStrokeLength / sqrt(2), theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                    }
+                    else 
+                    {
+                        theAlbum.frame = CGRectMake(albumOriginX, theAlbum.frame.origin.y + albumInFolderNum * 30, AlbumStrokeLength, AlbumStrokeLength);
+                    }
+                }
+            }
+        }
+        
+    }
+    
+    folderBtn.selected = !folderBtn.selected;
+}
+
+- (void)FilpToAlbumAddOnFolderAction:(album *)selAlbum
+{
+    [menuButton setImage:[UIImage imageNamed:@"pop_yellow_album_storage_folder_chosen.png"] forState:UIControlStateNormal]; 
+    CABasicAnimation* moveAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+
+    moveAnimation.fromValue = [NSNumber numberWithFloat:1.0];
+	moveAnimation.toValue = [NSNumber numberWithFloat:0.0];
+
+    moveAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+	moveAnimation.autoreverses = YES;
+    moveAnimation.duration= 0.3;
+    moveAnimation.repeatCount = 2;
+	moveAnimation.delegate = self;
+    
+	[menuButton.layer addAnimation:moveAnimation forKey:@"animateOpacity"];
+    [menuButton removeTarget:self action:@selector(basicButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    [menuButton addTarget:self action:@selector(folderAddMenuButtonOnAction) forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+{
+    if([anim.keyPath isEqualToString:@"opacity"])
+    {
+    }
+}
+
+- (void)timerButtonOnAction
+{
+    UIAlertView * timerAlert = [[UIAlertView alloc] initWithTitle:nil message:@"Timer를 켜시겠습니까?" delegate:self cancelButtonTitle:@"취소" otherButtonTitles:@"확인", nil];
+    [timerAlert setDelegate:self];
+    [timerAlert show];
+    [timerAlert release];
+}
+
+- (void)alarmButtonOnAction
+{
+    UIAlertView * alarmAlert = [[UIAlertView alloc] initWithTitle:nil message:@"Alarm를 켜시겠습니까?" delegate:self cancelButtonTitle:@"취소" otherButtonTitles:@"확인", nil];
+    [alarmAlert setDelegate:self];
+    [alarmAlert show];
+    [alarmAlert release];
+}
+
+- (void)swipeHandler:(UISwipeGestureRecognizer *)gestureRecognizer
+{
+//    if(gestureRecognizer.direction == UISwipeGestureRecognizerDirectionLeft)
+//    {
+//        [UIView beginAnimations:@"" context:nil];
+//        [UIView setAnimationDuration:0.1];
+//        if (!shouldReveal) {
+//            self.view.frame = CGRectMake(-60, 20, self.view.frame.size.width, self.view.frame.size.height);
+//            shouldReveal = !shouldReveal;
+//        }
+//        [UIView commitAnimations];
+//    }else 
+//    if(gestureRecognizer.direction == UISwipeGestureRecognizerDirectionRight)
+//    {
+//        [UIView beginAnimations:@"" context:nil];
+//        [UIView setAnimationDuration:0.1];
+//        if (shouldReveal) {
+//            self.view.frame = CGRectMake(0, 20, self.view.frame.size.width, self.view.frame.size.height);
+//            shouldReveal = !shouldReveal;
+//            [self showAlbumTag:NO];
+//        }
+//        [UIView commitAnimations];
+//    }
+}
+
+//Modified by The Finest Artist at 5.20
+- (void)slideButtonOnAction:(id)slideButton
+{
+    [UIView beginAnimations:@"" context:nil];
+    [UIView setAnimationDuration:albumStorageAnimationDuration];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+    if (shouldReveal) {
+        self.view.frame = CGRectMake(0, 20, self.view.frame.size.width, self.view.frame.size.height);
+        for (album * _album in albumArray)
+            [_album.nameTag setHidden:YES];
+    } else {
+        self.view.frame = CGRectMake(-60, 20, self.view.frame.size.width, self.view.frame.size.height);        
+        for (album * _album in albumArray)
+            [_album.nameTag setHidden:NO];
+    }
+    [UIView commitAnimations];
+    
+    shouldReveal = !shouldReveal;
+}
+
+#pragma mark - UITableView Delegate & DataSource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    // Return the number of rows in the section.
+    return [historyArray count];
+}
+
+
+// Customize the appearance of table view cells.
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    static NSString *CellIdentifier = @"Cell";
+    
+    selfMusicHistoryCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+    if (cell == nil) {
+        cell = [[[selfMusicHistoryCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+        [cell setSelectionStyle:UITableViewCellSelectionStyleNone];
+    }
+    
+    History * history = [historyArray objectAtIndex:indexPath.row];
+    cell.musicName.text = history.title;
+    cell.artist.text = history.artist;
+    cell.miniAlbumJacket.image = [History readImage:history.albumImageURL title:history.title];
+	
+    return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return 50;
+}
+
+#pragma mark - Volume View
+- (void)volumeChanged
+{
+    NSLog(@"volume:%f", musicPlayer.volume * 15.0);
+    NSInteger volumeSize = musicPlayer.volume * 15.0;
+    [volumeView setImage:[UIImage imageNamed:[NSString stringWithFormat:@"pop_yellow_volume%d.png", volumeSize]]];
+}
+
+#pragma mark - AudioHelperDelegate
+- (void)iPodItemReceived:(NSDictionary *)iPoditem
+{
+    
+}
+
+- (void)iPodItemsReceived:(NSArray *)iPoditem
+{
+    [self setAlbumView:[iPoditem count]];
+    [self setAlbumBgView];
+    
+    NSInteger index = 0;
+    for (MPMediaItem *mediaItem in iPoditem) {
+        NSNumber *persistentID = (NSNumber*)[mediaItem valueForProperty:MPMediaItemPropertyPersistentID];
+        NSString *title = (NSString*)[mediaItem valueForProperty:MPMediaItemPropertyTitle];
+        NSString *artist = (NSString*)[mediaItem valueForProperty:MPMediaItemPropertyArtist];
+        NSString *albumTitle =(NSString*)[mediaItem valueForProperty:MPMediaItemPropertyAlbumTitle]; 
+        MPMediaItemArtwork *artwork = [mediaItem valueForProperty: MPMediaItemPropertyArtwork];
+        NSString * playBackDuration = [mediaItem valueForProperty:MPMediaItemPropertyPlaybackDuration];
+        NSURL * assetURL = [mediaItem valueForProperty:MPMediaItemPropertyAssetURL];
+        UIImage * albumImage, * bigAlbumImage,  *recordImage;
+        if (artwork) {
+            albumImage = [artwork imageWithSize: CGSizeMake (40, 40)];
+            bigAlbumImage = [artwork imageWithSize: CGSizeMake (80, 80)];
+            recordImage = [artwork imageWithSize: CGSizeMake (228, 228)];
+        }
+        
+        if(index < [albumArray count])
+        {
+            album * _album = [albumArray objectAtIndex:index++];
+            _album.persistentID = persistentID;
+            _album.musicTitle = title;
+            _album.playTime = [playBackDuration doubleValue];
+            _album.artist = artist;
+            _album.assetURL = assetURL;
+            _album.nameTagLabel.text = title;
+            _album.albumTitle = albumTitle;
+            [_album setAlbumjaket:albumImage bigImage:bigAlbumImage recordImage:recordImage];
+        }
+        
+//        NSLog(@"Title:%@ album:%d albumTitle:%@ persistentID:%@", title, [albumArray count], albumTitle, persistentID);
+//        [Musics addObject:title];
+    }
+//    [MusicTable reloadData];
+}
+
+#pragma mark - album Delegate & recordLine Delegate
+- (void)albumFinishEnlargeOnRecord:(UIImage *)_albumImage Title:(NSString *)title playTime:(double)time album:(album *)alb;
+{
+    selectedAlbum = alb;
+    _record.recordBoard.image = _albumImage;
+    _record.selAlbum = alb;
+    
+    [_record setPlayTime:time curTime:musicPlayer.currentPlaybackTime];
+    
+    MPMediaQuery *everything = [[MPMediaQuery alloc] init];
+    MPMediaPropertyPredicate *artistNamePredicate = [MPMediaPropertyPredicate predicateWithValue:title forProperty: MPMediaItemPropertyTitle]; //also set to play Album
+    [everything addFilterPredicate:artistNamePredicate];
+    [musicPlayer setQueueWithQuery:everything];
+    
+    //Save in NowPlaying
+    [NowPlaying saveNowPlaying:[alb.persistentID doubleValue]];
+    [[DataModelManager sharedManager] saveToPersistentStore];
+}
+
+- (void)albumVerticalMove:(double)dy
+{
+    double dx = 0.5;
+    int index = 0;
+    for(album * _album in albumArray)
+    {
+        if(index == 1)
+        NSLog(@"Origin_X:%f %d", _album.frame.origin.x, _album.horizonUp);
+        
+        //Zig-Zag
+        if(((_album.frame.origin.x - dx) < 310) || ((_album.frame.origin.x + _album.frame.size.width + dx) > (albumOriginX + AlbumStrokeLength / sqrt(2) + AlbumStrokeLength)))
+        {
+            _album.horizonUp = !_album.horizonUp;
+        }
+
+        if(index == 1)
+        NSLog(@"After_X:%f %d", _album.frame.origin.x, _album.horizonUp);
+        
+        if(_album.horizonUp == YES)
+            _album.frame = CGRectMake(_album.frame.origin.x + dx, _album.frame.origin.y + dy, _album.frame.size.width, _album.frame.size.height);
+        else
+            _album.frame = CGRectMake(_album.frame.origin.x - dx, _album.frame.origin.y + dy, _album.frame.size.width, _album.frame.size.height);
+
+        _album.initialFrame = _album.frame;
+        index++;
+    }
+}
+
+- (void)albumVerticalEnded
+{
+//    for(album * _album in albumArray)
+//    {
+//        [UIView beginAnimations:nil context:nil];
+//        [UIView setAnimationDuration:0.5];
+//        if(_album.horizonUp == YES)
+//        {
+//            double dx = (albumOriginX + AlbumStrokeLength / sqrt(2) + AlbumStrokeLength) - (_album.frame.origin.x + _album.frame.size.width);
+//            _album.frame = CGRectMake(_album.frame.origin.x + dx, _album.frame.origin.y, _album.frame.size.width, _album.frame.size.height);
+//        }
+//        else
+//            _album.frame = CGRectMake(_album.frame.origin.x - dx, _album.frame.origin.y + dy, _album.frame.size.width, _album.frame.size.height);
+//
+//        [UIView commitAnimations];
+//        
+//    }
+    
+}
+- (void)playMusicFinished
+{
+    NSString * albumImgURL = [History saveImage:selectedAlbum.smalljaket title:selectedAlbum.musicTitle];
+    [historyArray addObject:[History saveHistory:selectedAlbum.musicTitle Artist:selectedAlbum.artist Emotion:1 AlbumImageURL:albumImgURL]];
+    [_musicHistoryTableView reloadData];   
+    
+    [[DataModelManager sharedManager] saveToPersistentStore];
+}
+
+- (void)playMusic
+{
+    [_record setPlayPickerAndStart];
+    [_record startRecordTimer];
+    [musicPlayer play];
+}
+
+- (void)stopMusic
+{
+    [_record stopPlayPicker];
+    [musicPlayer stop];
+}
+
+#pragma mark - UIGestureRecognizerDelegate
+- (BOOL)gestureRecognizerShouldBegin:(UISwipeGestureRecognizer *)gestureRecognizer
+{
+    NSLog(@"%f %f %f", [gestureRecognizer locationInView:self.view].x, [gestureRecognizer locationInView:self.view].y
+                     , ABS(touch.x - [gestureRecognizer locationInView:self.view].x));
+    
+    CGFloat point_x = [gestureRecognizer locationInView:self.view].x;
+    
+//    if(point_x < 180) 
+//        return NO;
+    
+    
+//        && (gestureRecognizer.direction = UISwipeGestureRecognizerDirectionLeft))
+//
+//    else if((point_x < 210) && (gestureRecognizer.direction = UISwipeGestureRecognizerDirectionRight))
+//        return NO;
+    
+    return YES;
+}
+
+#pragma mark - Touch Event
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count];
+	if (count == 1) {
+		touch = [[allTouches objectAtIndex:0] locationInView:[self.view superview]]; 
+        
+        NSLog(@"%f", touch.x);
+	}
+}
+
+//Modified by The Finest Artist at 5.20
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+    
+	if (count == 1) {
+        currentTouch = [[allTouches objectAtIndex:0] locationInView:[self.view superview]];
+        if (!shouldReveal && currentTouch.x < 320 - albumStorageOpenEventMargin) {
+            NSLog(@"opening:%f", currentTouch.x);
+            self.view.frame = CGRectMake(currentTouch.x - 320, 20, self.view.frame.size.width, self.view.frame.size.height);
+            if (currentTouch.x < 320 - albumStorageWidth) {
+                self.view.frame = CGRectMake(-albumStorageWidth, 20, self.view.frame.size.width, self.view.frame.size.height);
+            }
+        }
+        else if (shouldReveal && currentTouch.x > 320 - albumStorageCloseEventMargin) {
+            NSLog(@"closing:%f", currentTouch.x);
+            if (320 - currentTouch.x > albumStorageWidth) {
+                self.view.frame = CGRectMake(-albumStorageWidth, 20, self.view.frame.size.width, self.view.frame.size.height);
+            } else{
+                self.view.frame = CGRectMake(currentTouch.x - 320, 20, self.view.frame.size.width, self.view.frame.size.height);   
+            }
+        }
+	}
+}
+
+//Modified by The Finest Artist at 5.20
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+    
+    if (count == 1) {
+        NSLog(@"current origin:%f",self.view.frame.origin.x);
+        if (!shouldReveal) {
+            [UIView beginAnimations:@"" context:nil];
+            NSLog(@"opening duration:%f",self.view.frame.origin.x+albumStorageWidth);
+            [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+            [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+            self.view.frame = CGRectMake(-albumStorageWidth, 20, self.view.frame.size.width, self.view.frame.size.height);
+            shouldReveal = TRUE;
+            [UIView commitAnimations];        
+        } else {
+            [UIView beginAnimations:@"" context:nil];
+            NSLog(@"closing duration:%f",-self.view.frame.origin.x);
+            [UIView setAnimationDuration:albumStorageAnimationDuration/2];
+            [UIView setAnimationCurve:UIViewAnimationCurveEaseIn];
+            self.view.frame = CGRectMake(0, 20, self.view.frame.size.width, self.view.frame.size.height);
+            shouldReveal = FALSE;
+            [UIView commitAnimations];
+        }
+    }
+}
+
+@end

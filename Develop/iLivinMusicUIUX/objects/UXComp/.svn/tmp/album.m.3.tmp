@@ -1,0 +1,320 @@
+//
+//  album.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 2/21/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "album.h"
+#import "iLivinMusicMainViewController.h"
+#define recordLength 250
+#define recordOffset 30
+
+@implementation album
+@synthesize initialFrame;
+@synthesize albumStroke;
+@synthesize albumjaket;
+@synthesize albumjaketlayer;
+@synthesize mainViewCon;
+@synthesize albumScrollViewCon;
+@synthesize delegate;
+@synthesize musicTitle;
+@synthesize albumTitle;
+@synthesize lyrics;
+@synthesize persistentID;
+@synthesize artist;
+@synthesize playTime;
+@synthesize currentTime;
+@synthesize assetURL;
+@synthesize nameTag;
+@synthesize nameTagLabel;
+@synthesize smalljaket;
+@synthesize smallStroke;
+@synthesize bigStroke;
+@synthesize bigjaket;
+@synthesize recordStroke;
+@synthesize folderIndex;
+@synthesize selected;
+
+#pragma mark - View Setting
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        // Initialization code
+        
+        smallStroke = [[UIImage imageNamed:@"pop_yellow_album_storage_albumborder.png"] retain];
+        smalljaket = [[UIImage imageNamed:@"pop_yellow_album_storage_album_default.png"] retain];
+        bigStroke = [[UIImage imageNamed:@"pop_yellow_album_storage_albumborder_move.png"] retain];
+        bigjaket = [[UIImage imageNamed:@"pop_yellow_album_storage_album_default_move.png"] retain];
+        
+        albumStroke = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, AlbumStrokeLength, AlbumStrokeLength)];
+        [albumStroke setImage:smallStroke];
+
+        albumjaket = [[UIImageView alloc] initWithFrame:CGRectMake((AlbumStrokeLength-AlbumLength)/2, (AlbumStrokeLength-AlbumLength)/2, AlbumLength, AlbumLength)];
+        albumjaketlayer = [albumjaket layer];
+        [albumjaketlayer setMasksToBounds:YES];
+        [albumjaketlayer setCornerRadius:AlbumLength / 2.0];
+        [albumjaket setImage:smalljaket];
+        
+        [self addSubview:albumStroke];
+        [self addSubview:albumjaket];
+        
+        [albumStroke release];
+        [albumjaket release];
+        
+        initialFrame = frame;
+        
+//        AlbumGestureRecognizer * _longPress = [[AlbumGestureRecognizer alloc] initWithTarget:self action:@selector(longPressAction)];
+//        _longPress.minimumPressDuration = 1.0;
+//        _longPress.receivedView = self;
+//        [self addGestureRecognizer:_longPress];
+//        [_longPress release];
+     
+        longPressed = NO;
+        moved = NO;
+        
+        nameTag = [[UIImageView alloc] initWithFrame:CGRectMake(0, 10, 0, 20)];
+        [nameTag setImage:[[UIImage imageNamed:@"pop_yellow_album_storage_nametag.png"] stretchableImageWithLeftCapWidth:35/2.0 topCapHeight:10.0]];
+        [self addSubview:nameTag];
+        [nameTag release];
+        
+        nameTagLabel = [[UILabel alloc] initWithFrame:CGRectMake(5, 0, 0, 20)];
+        [nameTagLabel setFont:[UIFont boldSystemFontOfSize:12.0f]];
+        [nameTagLabel setBackgroundColor:[UIColor clearColor]];
+        [nameTag addSubview:nameTagLabel];
+        [nameTagLabel release];
+    }
+    return self;
+}
+
+- (void)setFrameWithInitialFrame:(CGRect)frame
+{
+    self.frame = frame;
+    initialFrame = frame;
+}
+
+- (CGSize)getSizeFromString:(NSString *)string
+{
+    return [string sizeWithFont:[UIFont boldSystemFontOfSize:12.0f]];
+}
+
+- (void)dealloc
+{
+    [smallStroke release];
+    [smalljaket release];
+    [bigStroke release];
+    [bigjaket release];
+    
+    [super dealloc];
+}
+
+- (void)setSelect:(BOOL)select
+{
+    selected = select;
+    if(selected == YES)
+    {   
+        [albumStroke setBackgroundColor:[UIColor yellowColor]];
+        [mainViewCon addAlbumInSelectedAlbumArr:self];
+        [mainViewCon FilpToAlbumAddOnFolderAction:self];
+    }
+    else
+    {
+        [albumStroke setBackgroundColor:[UIColor clearColor]];
+        [mainViewCon removeAlbumFromSelectedAlbumArr:self];
+    }
+}
+
+- (void)setAlbumjaket:(UIImage *)smallImage bigImage:(UIImage *)bigImage recordImage:(UIImage *)recordImage
+{
+    [smallImage retain];
+    [bigImage retain];
+    [recordImage retain];
+    
+    albumjaket.image = smallImage;
+    smalljaket = smallImage;
+    bigjaket = bigImage;
+    recordStroke = recordImage; 
+}
+
+//Modified by The Finest Artist at 6.01
+- (void)showNameTag:(BOOL)show
+{
+    if(show == YES)
+    { 
+        nameTag.frame = CGRectMake(13, 10, 0, 20);
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:AlbumNameTagAnimationDuration];
+            nameTag.frame = CGRectMake(-AlbumNameTagWidth + 310 - self.frame.origin.x - 7, 10, AlbumNameTagWidth - 310 + self.frame.origin.x + 20, 20);
+            nameTagLabel.frame = CGRectMake(5, 0, AlbumNameTagWidth - 310 + self.frame.origin.x, 20);
+            nameTag.frame = CGRectMake(-AlbumNameTagWidth + 310 - self.frame.origin.x - 7, 10, AlbumNameTagWidth - 310 + self.frame.origin.x + 20, 20);
+            nameTagLabel.frame = CGRectMake(5, 0, AlbumNameTagWidth - 310 + self.frame.origin.x, 20);
+        [UIView commitAnimations];
+    }
+    else 
+    {
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:AlbumNameTagAnimationDuration]; 
+        [UIView setAnimationDelegate:self];
+        [UIView setAnimationDidStopSelector:@selector(finishHideNameTagLabel)];
+        nameTag.frame = CGRectMake(13, 10, 0, 20);
+        nameTagLabel.frame = CGRectMake(5, 0, 0, 20);
+        [UIView commitAnimations];    
+    }
+}
+
+- (void)finishHideNameTagLabel
+{
+    nameTagLabel.frame = CGRectMake(5, 0, 0, 20);    
+}
+
+- (void)slideNameTag:(double)x
+{
+    
+}
+
+#pragma mark - LongPress Gesture
+- (void)longPressAction
+{
+    if(moved == NO)
+    {
+//        [UIView beginAnimations:nil context:nil];
+//        [UIView setAnimationDuration:0.3];
+//        albumStroke.frame = CGRectMake(albumStroke.frame.origin.x - AlbumStrokeLength / 2, albumStroke.frame.origin.y - AlbumStrokeLength / 2, AlbumStrokeLength * 2, AlbumStrokeLength * 2);
+//        [albumStroke setImage:bigStroke];
+//        albumjaket.frame = CGRectMake(albumjaket.frame.origin.x - AlbumLength / 2, albumjaket.frame.origin.y - AlbumLength / 2, AlbumLength * 2, AlbumLength * 2);
+//        [albumjaket setImage:bigjaket];
+//        [albumjaketlayer setCornerRadius:AlbumLength];
+//        [UIView commitAnimations];
+
+        [mainViewCon collectSelectedAlbumToMovingAlbum:self.frame mainAlbum:self];
+        
+        longPressed = YES;
+    }
+}
+
+/*
+// Only override drawRect: if you perform custom drawing.
+// An empty implementation adversely affects performance during animation.
+- (void)drawRect:(CGRect)rect
+{
+    // Drawing code
+}
+*/
+- (void)EnlargeOnRecord
+{
+    //album become larger
+    [UIView beginAnimations:nil context:nil];
+    [UIView setAnimationDuration:0.2];    
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(finishEnlargeOnRecord)];
+    albumStroke.frame = CGRectMake(-1 * (recordLength - self.frame.size.width - recordOffset) / 2, -1 *  (recordLength - self.frame.size.height - recordOffset) / 2, recordLength - recordOffset, recordLength - recordOffset);
+    albumjaket.frame = CGRectMake(-1 * (recordLength - self.frame.size.width - recordOffset) / 2 + 1, -1 *  (recordLength - self.frame.size.height - recordOffset) / 2 + 1, recordLength - recordOffset - 1, recordLength - recordOffset - 1);
+    self.frame = CGRectMake((320 - self.frame.size.height) / 2, recordMargin + (recordLength - self.frame.size.height) / 2 , self.frame.size.width, self.frame.size.height);
+    [albumjaketlayer setCornerRadius:(recordLength - recordOffset - 1) / 2.0];
+    [UIView commitAnimations];
+}
+
+- (void)finishEnlargeOnRecord
+{
+    //back to album storage
+    [mainViewCon selectedAlbumBackToInitialPos:self.frame];
+    
+    //self move back to own position
+    self.frame = initialFrame;    
+    albumStroke.frame = CGRectMake(0, 0, AlbumStrokeLength, AlbumStrokeLength);
+    [albumStroke setImage:smallStroke];
+    albumjaket.frame = CGRectMake((AlbumStrokeLength-AlbumLength)/2, (AlbumStrokeLength-AlbumLength)/2, AlbumLength, AlbumLength);
+    [albumjaket setImage:smalljaket];
+    [albumjaketlayer setCornerRadius:AlbumLength / 2.0];
+    
+    if([delegate respondsToSelector:@selector(albumFinishEnlargeOnRecord:Title:playTime:album:)])
+        [delegate albumFinishEnlargeOnRecord:recordStroke Title:musicTitle playTime:playTime album:self];
+}
+
+#pragma mark - touch events
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count];
+	if (count == 1) {
+		touch = [[allTouches objectAtIndex:0] locationInView:[self superview]]; 
+        moved = NO;
+        [self setSelect:!selected];
+//        
+//        [UIView beginAnimations:nil context:nil];
+//        [UIView setAnimationDuration:0.3];
+//        albumStroke.frame = CGRectMake(albumStroke.frame.origin.x - AlbumStrokeLength / 2, albumStroke.frame.origin.y - AlbumStrokeLength / 2, AlbumStrokeLength * 2, AlbumStrokeLength * 2);
+//        [albumStroke setImage:bigStroke];
+//        albumjaket.frame = CGRectMake(albumjaket.frame.origin.x - AlbumLength / 2, albumjaket.frame.origin.y - AlbumLength / 2, AlbumLength * 2, AlbumLength * 2);
+//        [albumjaket setImage:bigjaket];
+//        [albumjaketlayer setCornerRadius:AlbumLength];
+//        [UIView commitAnimations];
+//        
+        [self performSelector:@selector(longPressAction) withObject:nil afterDelay:AlbumLongPressEventTime];
+	}
+//    [[self superview] bringSubviewToFront:self];
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+//    NSLog(@"touchesMoved");
+	NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+	if (count == 1) {
+        {
+            moved = YES;
+            currentTouch = [[allTouches objectAtIndex:0] locationInView:[self superview]]; 
+            if(longPressed == YES)
+            {            
+
+                CGFloat dx = currentTouch.x - touch.x;
+                CGFloat dy = currentTouch.y - touch.y;
+                
+                self.frame = CGRectMake(self.frame.origin.x + dx, self.frame.origin.y + dy, self.frame.size.width, self.frame.size.height);
+            }
+            else
+                [delegate albumVerticalMove:currentTouch.y albumY:self.frame.origin.y];
+            touch = currentTouch;
+		}
+	}
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+//    NSLog(@"touchesEnded");
+    NSArray *allTouches = [touches allObjects]; 
+	int count = [allTouches count]; 
+    if(count == 1)
+    {
+        moved = YES;
+        if(longPressed == YES)
+        {  
+            longPressed = NO;
+            if (CGRectContainsPoint(CGRectMake((320 - recordLength) / 2, recordMargin, recordLength, recordLength), [[allTouches objectAtIndex:0] locationInView:[self superview]]))
+            {            
+                //album become smaller
+                [UIView beginAnimations:nil context:nil];
+                [UIView setAnimationDuration:0.5];
+                [UIView setAnimationDelegate:self];
+                [UIView setAnimationDidStopSelector:@selector(EnlargeOnRecord)];
+                albumStroke.frame = CGRectMake(0, 0, AlbumStrokeLength, AlbumStrokeLength);
+                [albumStroke setImage:smallStroke];
+                albumjaket.frame = CGRectMake((AlbumStrokeLength-AlbumLength)/2, (AlbumStrokeLength-AlbumLength)/2, AlbumLength, AlbumLength);
+                [albumjaket setImage:smalljaket];
+                [albumjaketlayer setCornerRadius:AlbumLength / 2.0];
+                [UIView commitAnimations];
+            }
+            else
+            {
+                //back to album storage
+                [mainViewCon selectedAlbumBackToInitialPos:self.frame];
+            }
+            [self setSelect:NO];
+        }
+        else
+            [delegate albumVerticalEnded];
+    }
+}
+@end

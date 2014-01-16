@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter
+END
+PaintingViewModified.m
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/PaintingViewModified.m
+END
+CuttingView.m
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/CuttingView.m
+END
+Image.h
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/Image.h
+END
+ImageEditManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/ImageEditManager.h
+END
+PaintingViewModified.h
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/PaintingViewModified.h
+END
+Image.m
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/Image.m
+END
+CuttingView.h
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/CuttingView.h
+END
+ImageEditManager.m
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/jhnth/!svn/ver/55/trunk/iLuvMusic/iLivinMusicUIUX/modules/ImageEditModule/Filter/ImageEditManager.m
+END

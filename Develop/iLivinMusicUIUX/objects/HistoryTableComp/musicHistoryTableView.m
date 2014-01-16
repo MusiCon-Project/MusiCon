@@ -1,0 +1,434 @@
+//
+//  musicHistoryTableView.m
+//  iLivinMusicUIUX
+//
+//  Created by jaehoon lee on 2/29/12.
+//  Copyright (c) 2012 Kaist. All rights reserved.
+//
+
+#import "musicHistoryTableView.h"
+#import "History.h"
+#import "iLivinMusicMainViewController.h"
+#import "albumInfoViewController.h"
+#import "selfMusicHistoryCell.h"
+
+@implementation musicHistoryTableView
+@synthesize parentViewCon;
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.userInteractionEnabled = YES;
+        // Initialization code
+        UIView * headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 5)];
+        
+        UIView * line01 = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 70, 5)];
+        [line01 setBackgroundColor:[UIColor blackColor]];
+        UIView * line02 = [[UIView alloc] initWithFrame:CGRectMake(frame.size.width - 70, 0, 70, 5)];
+        [line02 setBackgroundColor:[UIColor blackColor]];
+        [headerView addSubview:line01];
+        [headerView addSubview:line02];
+        [line01 release];
+        [line02 release];
+        
+        [self updateHistory];
+        datePicker = nil;
+        emotionsBg = nil;
+        preSelectIndex = -1;
+        cellArray = [[NSMutableArray alloc] init];
+        
+        self.separatorStyle = UITableViewCellSeparatorStyleNone;
+//        self.tableHeaderView = headerView;
+//        [headerView release];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [cellArray release];
+    [super dealloc];
+}
+- (void)updateHistory
+{
+    historyArray = [History readHistorys];
+}
+
+- (void)emotionImageConf:(NSInteger)row
+{
+    CGFloat totalHeight = 0; CGFloat curHeight = 0;
+    for(int i = 0; i <= row; i++)
+    {
+        History * history = [historyArray objectAtIndex:([historyArray count] - i - 1)];
+        CGSize musicNameSize = [history.title sizeWithFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f] constrainedToSize:CGSizeMake(170, MAXFLOAT)];
+        totalHeight += 50 - 14 + musicNameSize.height;
+        curHeight = 50 - 14 + musicNameSize.height;
+    }
+    
+    emotionsBg = [[UIImageView alloc] initWithFrame:CGRectMake(80, totalHeight - (curHeight + 30) / 2.0, 167, 93)];
+    [emotionsBg setImage:[UIImage imageNamed:@"pop_yellow_like_tag.png"]];
+    emotionsBg.userInteractionEnabled = YES;
+    [self addSubview:emotionsBg];
+    [emotionsBg release];
+
+    for(int i = 0; i < 7; i++)
+    {
+        int j = i / 5.0; int k = i - j * 5;
+        UIButton * emotionBtn = [[UIButton alloc] initWithFrame:CGRectMake(5 + 30 * k, 30 * j, 30, 30)];
+        emotionBtn.tag = i;
+        [emotionBtn addTarget:self action:@selector(emotionButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+        [emotionBtn setImage:[UIImage imageNamed:@"pop_yellow_like_selected.png"] forState:UIControlStateSelected];
+        UIImageView * emotionImg = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 30, 30)];
+        NSString *imageName = [NSString stringWithFormat:@"pop_yellow_like_%d.png", i];
+        [emotionImg setImage:[UIImage imageNamed:imageName]];
+
+        emotionBtn.selected = YES;
+        [emotionBtn addSubview:emotionImg];
+        [emotionsBg addSubview:emotionBtn];
+        [emotionBtn release];
+        [emotionImg release];
+    }
+    
+    UIButton * commentButton = [[UIButton alloc] initWithFrame:CGRectMake(5, 63, 149, 22)];
+    [commentButton addTarget:self action:@selector(musicNameClicked:) forControlEvents:UIControlEventTouchUpInside];
+    [emotionsBg addSubview:commentButton];
+    [commentButton release];
+}
+
+- (void)emotionsBgSetInitialValue:(NSInteger)row
+{
+    History * history = [historyArray objectAtIndex:([historyArray count] - row - 1)];
+    for(id subView in [emotionsBg subviews])
+    {
+        if([subView isKindOfClass:[UIButton class]] == YES)
+        {
+            UIButton * btn = (UIButton * )subView;
+            if(btn.tag == history.emotion.intValue){
+                btn.selected = YES;
+            }
+            else 
+                btn.selected = NO;
+        }
+    }
+}
+
+- (void)emotionButtonAction:(id)sender
+{
+    if(parentViewCon.record.curRecordType == RecordType)
+    {
+        selfMusicHistoryCell *cell = [cellArray objectAtIndex:preSelectIndex];
+
+        for(id subView in [emotionsBg subviews])
+        {
+            if([subView isKindOfClass:[UIButton class]] == YES)
+            {
+                UIButton * btn = subView;
+                btn.selected = NO;
+            }
+        }
+        
+        [cell emotionButtonAction:sender];
+        
+        emotionsBg.hidden = YES;
+        preSelectIndex = -1;
+        [cell activateAlbumInfo:YES];
+    }
+}
+
+
+#pragma mark - UIButton Action
+- (void)musicNameClicked:(id)sender
+{
+    UIButton * nameButton = (UIButton *)sender;
+    UITableViewCell * cell = (UITableViewCell *)nameButton.superview;
+    NSIndexPath * indexPath = [self indexPathForCell:cell];
+    
+    if(parentViewCon.record.curRecordType == RecordType)
+    {
+        historyArray = [History readHistorys];
+        [parentViewCon.view bringSubviewToFront:parentViewCon.slideButton];
+        [parentViewCon.view setNeedsDisplay];
+        
+        _albumInfoViewController = [[albumInfoViewController alloc] init];
+        History * albumHistory = [historyArray objectAtIndex:indexPath.row];
+        _albumInfoViewController.albumHistory = albumHistory;
+        //=============sort Array with same Album Title==============//
+        BOOL myAlbumExist = NO;
+        NSMutableArray * sameAlbumArray = [[[NSMutableArray alloc] init] autorelease];
+        for (album * _album in parentViewCon.albumArray)
+            if ([_album.albumTitle isEqualToString:albumHistory.albumTitle]) 
+            {
+                if(![_album.musicTitle isEqualToString:albumHistory.title])
+                    [sameAlbumArray addObject:_album];
+                else //MyAlbum 
+                {
+                    // TODO : erase other 변수
+                    _albumInfoViewController._album = _album;
+                    _albumInfoViewController.lyricString = _album.lyrics;
+                    _albumInfoViewController.persistentID = _album.persistentID;
+                    myAlbumExist = YES;
+                }
+                
+            }
+        _albumInfoViewController.sameAlbumArray = sameAlbumArray;
+        if(!myAlbumExist)
+        {
+            UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:nil message:@"앨범이 존재하지 않습니다." delegate:self cancelButtonTitle:@"확인" otherButtonTitles:nil];
+            [alertView show];
+            return;
+        }
+        //===========================================================//
+            
+        if(!parentViewCon.opened)
+        {
+            _albumInfoViewController.view.frame = CGRectMake(0, 460, 310, 460);
+            [parentViewCon.view addSubview:_albumInfoViewController.view];
+            [UIView beginAnimations:@"" context:nil];
+            [UIView setAnimationDuration:albumInfoAnimationDuration];
+            [UIView setAnimationDelegate:self];
+            if(nameButton.tag == 1)
+                [UIView setAnimationDidStopSelector:@selector(albumInfoModelFinished)];
+            _albumInfoViewController.view.frame = CGRectMake(0, 0, 310, 460);
+            [UIView commitAnimations];
+        }
+        else {
+            _albumInfoViewController.view.frame = CGRectMake(-310, 0, 310, 460);
+            [parentViewCon.view addSubview:_albumInfoViewController.view];
+            [UIView beginAnimations:@"" context:nil];
+            [UIView setAnimationDuration:albumInfoAnimationDuration];
+            [UIView setAnimationDelegate:self];
+            if(nameButton.tag == 1)
+                [UIView setAnimationDidStopSelector:@selector(albumInfoModelFinished)];
+            //==parentViewCon==//
+            parentViewCon.view.frame = CGRectMake(0, 20, parentViewCon.view.frame.size.width, parentViewCon.view.frame.size.height);
+            parentViewCon.opened = NO;
+            
+            _albumInfoViewController.view.frame = CGRectMake(0, 0, 310, 460);
+            [UIView commitAnimations];
+        }
+        
+        if(nameButton.tag == 1)
+            [_albumInfoViewController viewInit];
+        else
+            [_albumInfoViewController viewInitForArtist];
+
+    }
+}
+
+- (void)albumInfoModelFinished
+{
+    [_albumInfoViewController viewModalLoadFinished];
+}
+
+- (void)emoticonButtonClicked:(id)sender
+{
+    UIButton * emotion = (UIButton *)sender;
+    selfMusicHistoryCell * cell = (selfMusicHistoryCell *)emotion.superview;
+    NSIndexPath * indexPath = [self indexPathForCell:cell];
+    
+    if(emotionsBg == nil)
+    {
+        [self emotionImageConf:indexPath.row];
+        [cell activateAlbumInfo:NO];
+        preSelectIndex = indexPath.row;
+        [self emotionsBgSetInitialValue:preSelectIndex];
+    }
+    else
+    {
+        if(preSelectIndex == indexPath.row)
+        {
+            emotionsBg.hidden = YES;
+            preSelectIndex = -1;
+            [cell activateAlbumInfo:YES];
+            // send selected imotion
+        }
+        else 
+        {
+            emotionsBg.hidden = NO;
+            
+            CGFloat totalHeight = 0; CGFloat curHeight = 0;
+            for(int i = 0; i <= indexPath.row; i++)
+            {
+                History * history = [historyArray objectAtIndex:([historyArray count] - i - 1)];
+                CGSize musicNameSize = [history.title sizeWithFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f] constrainedToSize:CGSizeMake(170, MAXFLOAT)];
+                totalHeight += 50 - 14 + musicNameSize.height;
+                curHeight = 50 - 14 + musicNameSize.height;
+            }
+            [emotionsBg setFrame:CGRectMake(80, totalHeight - (curHeight + 30) / 2.0 , 167, 93)];
+            
+            [cell activateAlbumInfo:NO];
+            preSelectIndex = indexPath.row;
+            [self emotionsBgSetInitialValue:preSelectIndex];
+        }
+    }
+}
+
+- (void)alarmTimerClicked
+{
+    if(datePicker == nil)
+    {
+        datePicker = [[UIPickerView alloc] initWithFrame:CGRectMake(75, 10, 170, 30)];
+        datePicker.delegate = self;
+        datePicker.dataSource = self;
+        datePicker.hidden = YES;
+        [self addSubview:datePicker];
+        [datePicker release];
+    }
+    
+    datePicker.hidden = !datePicker.hidden;
+    
+    if(parentViewCon.record.curRecordType == RecordType)
+    {
+        
+    }
+    else if(parentViewCon.record.curRecordType == TimerType)
+    {
+        
+    }
+}
+
+- (void)autoAlarmTimerExplainationClicked
+{
+    autoWarningView = [[UIImageView alloc] initWithFrame:CGRectMake(75, 65, 170, 115)];
+    [autoWarningView setImage:[UIImage imageNamed:@"pop_yellow_Timer_History_Warning_click.png"]];
+    [self addSubview:autoWarningView];
+    [autoWarningView release];
+    
+    autoWarningView.hidden = !autoWarningView.hidden;
+}
+
+- (void)volumeExplainationClicked
+{
+    
+}
+
+- (void)alarmMusicClicked
+{
+    
+}
+
+#pragma mark - UIPickerView Delegate & DataSource
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView
+{
+    return 3;
+}
+
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component
+{
+    switch (component) {
+        case 0:
+            return 12;
+            break;
+        case 1:
+            return 60;
+            break;            
+        case 2:
+            return 60;
+            break;
+        default:
+            break;
+    }
+    return 3;
+}
+
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component
+{
+    if (component == 0) 
+        return [NSString stringWithFormat:@"%d", (row + 1)];
+    
+    return [NSString stringWithFormat:@"%d", row];
+}
+//Modified by The Finest Artist at 5.20
+#pragma mark - UITableView Delegate & DataSource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    // Return the number of rows in the section.
+    if(parentViewCon.record.curRecordType == RecordType)
+        return [historyArray count];
+    else if(parentViewCon.record.curRecordType == TimerType)
+        return 3;
+    else 
+        return 4;
+    return 1;
+}
+
+
+// Customize the appearance of table view cells.
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if(parentViewCon.record.curRecordType == RecordType)
+    {
+        NSString *CellIdentifier = [NSString stringWithFormat:@"HistoryCell_%d", indexPath.row];
+        selfMusicHistoryCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+        if (cell == nil) {
+            cell = [[[selfMusicHistoryCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+            [cell setSelectionStyle:UITableViewCellSelectionStyleNone];
+            [cellArray insertObject:cell atIndex:indexPath.row];
+            
+            NSLog(@"Create Cell num:%d", indexPath.row);
+        }
+        History * history = [historyArray objectAtIndex:([historyArray count] - indexPath.row - 1)];
+        cell.history = history;
+        cell.musicName.text = history.title;
+                
+        CGSize musicNameSize = [history.title sizeWithFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f] constrainedToSize:CGSizeMake(170, MAXFLOAT)];
+        cell.musicNameButton.frame = CGRectMake(cell.musicNameButton.frame.origin.x, cell.musicNameButton.frame.origin.y, musicNameSize.width, musicNameSize.height);
+        cell.musicName.frame = CGRectMake(cell.musicName.frame.origin.x, cell.musicName.frame.origin.y, 170, musicNameSize.height);
+        
+        CGSize artistNameSize = [history.artist sizeWithFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:9.0f] constrainedToSize:CGSizeMake(170, MAXFLOAT)];
+        cell.artist.text = history.artist;
+        cell.artistButton.frame = CGRectMake(cell.artistButton.frame.origin.x, cell.musicNameButton.frame.origin.y + 1.0 + cell.musicNameButton.frame.size.height, artistNameSize.width, cell.artistButton.frame.size.height);
+        cell.miniAlbumJacket.image = [History readImage:history.albumImageURL title:history.title];
+        
+        cell.miniAlbumStroke.frame = CGRectMake(cell.miniAlbumStroke.frame.origin.x, (50 - (14 - musicNameSize.height) - cell.miniAlbumStroke.frame.size.height)/2.0, HistoryAlbumStrokeLength, HistoryAlbumStrokeLength);
+        cell.miniAlbumJacket.frame = CGRectMake(cell.miniAlbumJacket.frame.origin.x, (50 - (14 - musicNameSize.height) - cell.miniAlbumJacket.frame.size.height)/2.0, HistoryAlbumStrokeLength, HistoryAlbumStrokeLength);
+        
+        cell.emotion.frame = CGRectMake(cell.emotion.frame.origin.x, (50 - (14 - musicNameSize.height) - cell.emotion.frame.size.height)/2.0, cell.emotion.frame.size.width, cell.emotion.frame.size.height);
+        cell.emotion.image = [UIImage imageNamed:[NSString stringWithFormat:@"pop_yellow_like_%d.png", history.emotion.intValue]];
+//        [cell setEmotionAniFinished:NO];
+
+        NSLog(@"Reuse Cell num:%d", indexPath.row);
+        return cell;
+    }
+    else 
+    {
+        NSString *CellIdentifier = [NSString stringWithFormat:@"settingCell__%d_%d", parentViewCon.record.curRecordType, indexPath.row];
+        settingCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+        if (cell == nil) {
+            cell = [[[settingCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+            [cell setSelectionStyle:UITableViewCellSelectionStyleNone];
+            
+            [cell setSettingCellView:parentViewCon.record.curRecordType indexPathRow:indexPath.row];
+        }
+        [cell updateSettingCellView:parentViewCon.record.curRecordType indexPathRow:indexPath.row];
+        return cell;
+    }
+    return nil;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    History * history = [historyArray objectAtIndex:([historyArray count] - indexPath.row - 1)];
+    CGSize musicNameSize = [history.title sizeWithFont:[UIFont fontWithName:@"ArialRoundedMTBold" size:14.0f] constrainedToSize:CGSizeMake(170, MAXFLOAT)];
+    NSLog(@"Row%d:%f", indexPath.row, 50 - 14 + musicNameSize.height);
+    return 50 - 14 + musicNameSize.height;
+}
+
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    NSLog(@"ROW:%d", indexPath.row);
+    if(parentViewCon.record.curRecordType == RecordType)
+    {
+        for (int i = 0; i < [historyArray count]; i++) {
+            if([cellArray count] > i)
+            {
+                selfMusicHistoryCell * cell = [cellArray objectAtIndex:i];
+//                [cell setEmotionAniFinished:YES];
+            }
+        }
+        
+        for(selfMusicHistoryCell * cell in tableView.visibleCells)
+        {
+            [cell setEmotionAniFinished:NO];
+        }
+    }
+}
+@end
